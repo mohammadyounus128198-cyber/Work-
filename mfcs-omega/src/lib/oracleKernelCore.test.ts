@@ -218,4 +218,89 @@ const bcNotInAttractor = core2.evaluate({ ...makeBase(), classification: { facet
 assert.equal(bcNotInAttractor.lawCompliance?.inAttractor, false, 'inAttractor false for Facet-B even in BUILD_COMPRESS');
 assert.equal(bcNotInAttractor.lawCompliance?.irreversible, true, 'irreversible=true in BUILD_COMPRESS regardless of facet');
 
+// ---------------------------------------------------------------------------
+// 18. Partial facet name — "Facet-AB" must not match "Facet-A"
+// ---------------------------------------------------------------------------
+
+const partialNameFacet = core2.evaluate({ ...makeBase(), classification: { facet: 'Facet-AB', label: 'AB', M_min: 1 } });
+assert.equal(partialNameFacet.inPhiAttractor, false, 'Facet-AB must not match Facet-A (no prefix matching)');
+assert.equal(partialNameFacet.attractorId, undefined, 'attractorId must be undefined for Facet-AB');
+
+const partialNameFacetC2 = core2.evaluate({ ...makeBase(), classification: { facet: 'Facet-C2', label: 'C2', M_min: 1 } });
+assert.equal(partialNameFacetC2.inPhiAttractor, false, 'Facet-C2 must not match Facet-C');
+
+// ---------------------------------------------------------------------------
+// 19. W=0 and gap=0 are passed through without modification
+// ---------------------------------------------------------------------------
+
+const zeroFields = core2.evaluate({
+  W: 0,
+  inside: true,
+  margin: 0,
+  gap: 0,
+  kink: null,
+  weights: { C_r: 0 },
+  classification: { facet: 'Facet-A', label: 'A', M_min: 0 },
+  state: { mode: 'IDLE' },
+});
+assert.equal(zeroFields.W, 0, 'W=0 should be passed through');
+assert.equal(zeroFields.supportGap, 0, 'gap=0 should be passed through as supportGap=0');
+assert.equal(zeroFields.margin, 0, 'margin=0 should be passed through');
+assert.equal(zeroFields.M_min, 0, 'M_min=0 should come from classification.M_min');
+
+// ---------------------------------------------------------------------------
+// 20. kinkProximity when kink=0 and C_r=0 → 0
+// ---------------------------------------------------------------------------
+
+const kinkAndCrZero = core2.evaluate({ ...makeBase(), kink: 0, weights: { C_r: 0 } });
+assert.equal(kinkAndCrZero.kinkProximity, 0, 'kinkProximity should be |0 - 0| = 0');
+
+// ---------------------------------------------------------------------------
+// 21. kinkProximity when kink=0 and C_r=5 → 5
+// ---------------------------------------------------------------------------
+
+const kinkZeroNonzeroCr = core2.evaluate({ ...makeBase(), kink: 0, weights: { C_r: 5 } });
+assert.equal(kinkZeroNonzeroCr.kinkProximity, 5, 'kinkProximity should be |5 - 0| = 5 when kink=0');
+
+// ---------------------------------------------------------------------------
+// 22. Two OracleKernelCore instances are independent
+// ---------------------------------------------------------------------------
+
+const coreA = new OracleKernelCore(2);
+const coreB = new OracleKernelCore(3, true);
+const reportA = coreA.evaluate({ ...makeBase() });
+const reportB = coreB.evaluate({ ...makeBase() });
+assert.equal(reportA.dimension, 2, 'coreA dimension should be 2');
+assert.equal(reportB.dimension, 3, 'coreB dimension should be 3');
+assert.equal(reportA.degenerate, undefined, 'coreA degenerate should be undefined');
+assert.equal(reportB.degenerate, true, 'coreB degenerate should be true');
+
+// ---------------------------------------------------------------------------
+// 23. Non-phi facet + inside=false → no attractor, no attractorId
+// ---------------------------------------------------------------------------
+
+const facetBOutside = core2.evaluate({ ...makeBase(), inside: false, classification: { facet: 'Facet-B', label: 'B', M_min: 1 }, state: { mode: 'BUILD_COMPRESS' } });
+assert.equal(facetBOutside.inPhiAttractor, false, 'Non-phi facet outside envelope must not be in attractor');
+assert.equal(facetBOutside.attractorId, undefined, 'attractorId undefined for non-phi facet outside');
+assert.equal(facetBOutside.lawCompliance?.irreversible, true, 'BUILD_COMPRESS is irreversible regardless of facet or inside');
+
+// ---------------------------------------------------------------------------
+// 24. Large numeric values are passed through correctly
+// ---------------------------------------------------------------------------
+
+const largeValues = core2.evaluate({
+  W: 1e9,
+  inside: true,
+  margin: 999.99,
+  gap: 500,
+  kink: 1000,
+  weights: { C_r: 1500 },
+  classification: { facet: 'Facet-A', label: 'A', M_min: 10000 },
+  state: { mode: 'ANALYZE' },
+});
+assert.equal(largeValues.W, 1e9, 'Large W value passed through');
+assert.equal(largeValues.supportGap, 500, 'Large gap passed through as supportGap');
+assert.equal(largeValues.kinkProximity, 500, 'kinkProximity = |1500 - 1000| = 500');
+assert.equal(largeValues.M_min, 10000, 'Large M_min passed through');
+
 console.log('oracleKernelCore attractor tests passed');
