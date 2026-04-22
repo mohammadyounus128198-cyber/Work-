@@ -1,192 +1,60 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Orbitron:wght@500;700;900&family=Space+Grotesk:wght@400;500;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;600;800&display=swap");
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Outfit", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
-  --font-display: "Orbitron", sans-serif;
+
+  --color-chorus-primary: #00f5d4;
+  --color-chorus-secondary: #0ea5e9;
+  --color-chorus-danger: #ef4444;
+  --color-chorus-bg: #05070a;
+  --color-chorus-surface: rgba(255, 255, 255, 0.05);
+  --color-chorus-glass: rgba(255, 255, 255, 0.05);
+  --color-chorus-glass-border: rgba(255, 255, 255, 0.1);
 }
 
-:root {
-  --bg: #02050a;
-  --bg-elevated: #071019;
-  --panel: rgba(7, 18, 27, 0.84);
-  --panel-heavy: rgba(3, 9, 14, 0.92);
-  --accent: #33e7ff;
-  --accent-soft: rgba(51, 231, 255, 0.12);
-  --accent-green: #18ff9c;
-  --accent-gold: #ffcb4c;
-  --danger: #ff4d64;
-  --neutral: #7e9ca9;
-  --grid: rgba(51, 231, 255, 0.05);
-  --glow: 0 0 28px rgba(51, 231, 255, 0.16);
-  color-scheme: dark;
-  background: var(--bg);
-  color: var(--accent);
+@layer base {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    @apply bg-chorus-bg text-white font-sans antialiased overflow-hidden;
+  }
 }
 
-* {
-  box-sizing: border-box;
-}
+@layer utilities {
+  .lattice-bg {
+    @apply absolute inset-0 z-0 pointer-events-none;
+    background:
+      radial-gradient(circle at center, rgba(6, 182, 212, 0.1) 0%, transparent 70%),
+      linear-gradient(rgba(0, 245, 212, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 245, 212, 0.05) 1px, transparent 1px);
+    background-size: auto, 40px 40px, 40px 40px;
+  }
 
-html,
-body,
-#root {
-  min-height: 100%;
-}
+  .glass-panel {
+    @apply bg-chorus-glass backdrop-blur-md border border-chorus-glass-border rounded-lg shadow-xl;
+  }
 
-.glow-text {
-  text-shadow: 0 0 20px rgba(51, 231, 255, 0.32);
-}
+  .glow-text {
+    text-shadow: 0 0 10px rgba(0, 245, 212, 0.4);
+  }
 
-.glow-border {
-  box-shadow:
-    0 0 0 1px rgba(51, 231, 255, 0.08),
-    0 0 22px rgba(51, 231, 255, 0.12),
-    0 0 50px rgba(24, 255, 156, 0.04);
-}
+  .glow-border {
+    @apply border-chorus-primary/30 shadow-[0_0_20px_rgba(0,245,212,0.1)];
+  }
 
-body {
-  margin: 0;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  font-family: var(--font-sans);
-  background:
-    radial-gradient(circle at top, rgba(18, 72, 94, 0.18), transparent 32%),
-    radial-gradient(circle at 20% 80%, rgba(24, 255, 156, 0.08), transparent 28%),
-    radial-gradient(circle at 80% 24%, rgba(51, 231, 255, 0.08), transparent 26%),
-    linear-gradient(180deg, #03060b 0%, #02050a 42%, #010308 100%);
-  color: #d4e9f0;
-}
-
-body::before,
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-}
-
-body::before {
-  background-image:
-    linear-gradient(var(--grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-  background-size: 120px 120px;
-  opacity: 0.18;
-  mix-blend-mode: screen;
-}
-
-body::after {
-  background: repeating-linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.04) 0,
-    rgba(255, 255, 255, 0.04) 1px,
-    transparent 1px,
-    transparent 4px
-  );
-  opacity: 0.04;
-}
-
-.glass-panel {
-  background: linear-gradient(180deg, rgba(8, 18, 27, 0.9), rgba(4, 10, 16, 0.84));
-  backdrop-filter: blur(18px) saturate(140%);
-  border: 1px solid rgba(51, 231, 255, 0.14);
-}
-
-.glass-panel-heavy {
-  background: linear-gradient(180deg, rgba(5, 11, 17, 0.96), rgba(2, 7, 11, 0.92));
-  backdrop-filter: blur(26px) saturate(160%);
-  border: 1px solid rgba(51, 231, 255, 0.16);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.02),
-    0 26px 80px rgba(0, 0, 0, 0.5);
-}
-
-.chorus-panel {
-  position: relative;
-  overflow: hidden;
-}
-
-.chorus-panel::before,
-.chorus-panel::after {
-  content: "";
-  position: absolute;
-  width: 24px;
-  height: 24px;
-  pointer-events: none;
-  opacity: 0.6;
-}
-
-.chorus-panel::before {
-  top: 0;
-  left: 0;
-  border-top: 1px solid rgba(51, 231, 255, 0.38);
-  border-left: 1px solid rgba(51, 231, 255, 0.38);
-}
-
-.chorus-panel::after {
-  right: 0;
-  bottom: 0;
-  border-right: 1px solid rgba(51, 231, 255, 0.22);
-  border-bottom: 1px solid rgba(51, 231, 255, 0.22);
-}
-
-.chorus-chip {
-  background: rgba(5, 11, 17, 0.84);
-  border: 1px solid rgba(51, 231, 255, 0.12);
-  color: #7e9ca9;
-  text-transform: uppercase;
-  letter-spacing: 0.24em;
-}
-
-.status-dot {
-  box-shadow: 0 0 18px currentColor;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-@keyframes scroll {
-  0% { transform: translateX(10%); }
-  100% { transform: translateX(-100%); }
-}
-
-@keyframes loading {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(300%); }
-}
-
-.animate-pulse-custom {
-  animation: pulse 2s infinite ease-in-out;
-}
-
-.animate-scroll {
-  animation: scroll 30s linear infinite;
-}
-
-/* Custom selection color */
-::selection {
-  background: var(--accent);
-  color: var(--bg);
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 4px;
-}
-::-webkit-scrollbar-track {
-  background: #02050a;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(51, 231, 255, 0.24);
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(51, 231, 255, 0.42);
+  .tech-corner {
+    background:
+      linear-gradient(to right, var(--color-chorus-primary) 1.5px, transparent 1.5px) 0 0,
+      linear-gradient(to bottom, var(--color-chorus-primary) 1.5px, transparent 1.5px) 0 0,
+      linear-gradient(to left, var(--color-chorus-primary) 1.5px, transparent 1.5px) 100% 100%,
+      linear-gradient(to top, var(--color-chorus-primary) 1.5px, transparent 1.5px) 100% 100%;
+    background-repeat: no-repeat;
+    background-size: 6px 6px;
+  }
 }

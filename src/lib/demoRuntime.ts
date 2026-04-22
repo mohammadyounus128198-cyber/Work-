@@ -11,9 +11,11 @@ export const generateInitialState = () => {
   return {
     phi: 42,
     readiness: 65,
+    s: 18,
     energy: 12,
     phiStock: 42,
     readinessStock: 65,
+    synergyStock: 18,
     energyStock: 12,
     tick: 0,
     startTime: Date.now()

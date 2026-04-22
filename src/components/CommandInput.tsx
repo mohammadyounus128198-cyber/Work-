@@ -1,105 +1,130 @@
-import React, { useState } from "react";
-import { useCodex } from "../context/CodexContext";
-import { Terminal, Send, Zap, Shield, Cpu, History, Sparkles } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "motion/react";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { useState } from "react";
 
-const commands = [
-  { id: "STABILIZE", icon: Shield, label: "Stabilize", desc: "Dampen lattice variance" },
-  { id: "BOOST", icon: Zap, label: "Boost", desc: "Ignite system energy" },
-  { id: "PREDICTION", icon: Cpu, label: "Simulate", desc: "Project ghost futures" },
-  { id: "TRACE", icon: History, label: "Trace", desc: "Recall state history" },
-  { id: "ORACLE", icon: Sparkles, label: "Oracle", desc: "AI strategic analysis" }
-] as const;
+type CommandName = "freq" | "speed" | "complexity" | "hue";
 
-export default function CommandInput() {
+interface CommandInputProps {
+  onCommand: (name: CommandName, value: number) => void;
+  onCapture: () => void;
+}
+
+interface ValidationRule {
+  label: string;
+  min: number;
+  max: number;
+  integer?: boolean;
+}
+
+const COMMAND_RULES: Record<CommandName, ValidationRule> = {
+  freq: { label: "freq", min: 0.4, max: 4.2 },
+  speed: { label: "speed", min: 0.0, max: 2.5 },
+  complexity: { label: "complexity", min: 1, max: 7, integer: true },
+  hue: { label: "hue", min: -180, max: 180 },
+};
+
+export function CommandInput({ onCommand, onCapture }: CommandInputProps) {
   const [input, setInput] = useState("");
-  const { sendIntent, lastAck, runOracleAnalysis, isAnalyzing } = useCodex();
-  const [isFocused, setIsFocused] = useState(false);
+  const [message, setMessage] = useState<string>("Enter `freq 1.00`, `speed 1.2`, `complexity 4`, `hue 0`, or `capture`.");
+  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
 
-  const handleCommand = (cmd: string) => {
-    if (!cmd.trim()) return;
-    const action = cmd.toUpperCase();
-    
-    if (action === "ORACLE") {
-      runOracleAnalysis();
+  const execute = () => {
+    const trimmed = input.trim();
+    if (!trimmed) {
+      setStatus("error");
+      setMessage("Command input is empty.");
+      return;
+    }
+
+    if (trimmed.toLowerCase() === "capture") {
+      onCapture();
+      setStatus("success");
+      setMessage("Capture triggered.");
       setInput("");
       return;
     }
 
-    // Auto-meta for specific commands
-    const meta = action === "PREDICTION" ? { steps: 50 } : (action === "TRACE" ? { limit: 100 } : undefined);
-    
-    sendIntent(action, meta);
+    const [rawName, rawValue] = trimmed.split(/\s+/, 2);
+    const name = rawName?.toLowerCase() as CommandName;
+    const rule = COMMAND_RULES[name];
+
+    if (!rule) {
+      setStatus("error");
+      setMessage("Unknown command. Use freq, speed, complexity, hue, or capture.");
+      return;
+    }
+
+    const value = Number(rawValue);
+    if (!Number.isFinite(value)) {
+      setStatus("error");
+      setMessage(`\`${rule.label}\` requires a numeric value.`);
+      return;
+    }
+
+    if (rule.integer && !Number.isInteger(value)) {
+      setStatus("error");
+      setMessage(`\`${rule.label}\` must be an integer between ${rule.min} and ${rule.max}.`);
+      return;
+    }
+
+    if (value < rule.min || value > rule.max) {
+      setStatus("error");
+      setMessage(`\`${rule.label}\` must be between ${rule.min} and ${rule.max}.`);
+      return;
+    }
+
+    onCommand(name, value);
+    setStatus("success");
+    setMessage(`Applied ${rule.label} = ${value}.`);
     setInput("");
   };
 
   return (
-    <div className="w-[min(54rem,calc(100vw-3rem))] group">
-      <div className={`relative flex items-center bg-[#081019dd] border transition-all duration-300 backdrop-blur-xl px-5 py-3 rounded-[2px] shadow-[0_0_25px_rgba(0,0,0,0.55)] chorus-panel ${
-        isFocused ? 'border-[#33e7ff] shadow-[0_0_18px_rgba(51,231,255,0.14)]' : 'border-[#17313c]'
-      }`}>
-        <Terminal size={14} className={`mr-4 ${isFocused || isAnalyzing ? 'text-[#33e7ff]' : 'text-[#8899a6]'}`} />
-        
-        <input 
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="w-full max-w-[720px] space-y-3 z-50"
+    >
+      <div className="flex items-center space-x-4 bg-black/40 border border-chorus-primary/30 backdrop-blur-xl px-6 py-4 rounded-2xl shadow-[0_0_50px_rgba(0,245,212,0.1)] group">
+        <div className="text-chorus-primary font-mono text-lg glow-text group-focus-within:animate-pulse">L</div>
+        <input
           type="text"
           value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleCommand(input)}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          placeholder={isAnalyzing ? "Chorus inference in progress..." : "SYSTEM COMMAND ENTRY [INTENT_INITIATE]..."}
-          disabled={isAnalyzing}
-          className="flex-1 bg-transparent border-none outline-none text-[11px] uppercase tracking-[0.28em] text-[#dffaff] placeholder:text-[#21414f] placeholder:italic"
+          onChange={(event) => setInput(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              execute();
+            }
+          }}
+          placeholder="Set the field drive, hue, or lattice density..."
+          className="bg-transparent border-none outline-none text-white placeholder-white/20 w-full text-sm font-light tracking-wide focus:placeholder-white/40 transition-all"
         />
-
-        <button 
-          onClick={() => handleCommand(input)}
-          disabled={isAnalyzing}
-          className="ml-4 p-2 border border-transparent hover:border-[#33e7ff33] hover:bg-[#33e7ff11] rounded-[2px] transition-colors disabled:opacity-50"
+        <button
+          onClick={execute}
+          className="flex items-center space-x-2 rounded-xl border border-white/10 px-3 py-1.5 text-[10px] font-mono uppercase tracking-[0.2em] text-white/60 transition hover:border-chorus-primary/40 hover:text-chorus-primary"
         >
-          {isAnalyzing ? <div className="w-3.5 h-3.5 border-2 border-[#33e7ff] border-t-transparent rounded-full animate-spin" /> : <Send size={14} className="text-[#33e7ff]" />}
+          <span>Enter</span>
         </button>
-
-        {/* ACK Indicator */}
-        <AnimatePresence>
-          {lastAck && (
-            <motion.div 
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0 }}
-              className="absolute -top-1 -right-1 w-2 h-2 bg-[#18ff9c] rounded-full shadow-[0_0_12px_rgba(24,255,156,0.8)]"
-            />
-          )}
-        </AnimatePresence>
       </div>
 
-      {/* Suggested Command Chips */}
-      <div className="flex flex-wrap gap-2 mt-4 overflow-hidden">
-        {commands.map(cmd => (
-          <button
-            key={cmd.id}
-            onClick={() => handleCommand(cmd.id)}
-            className="flex items-center gap-2 px-4 py-2 bg-[#05080dba] border border-[#17313c] hover:border-[#33e7ff33] hover:bg-[#33e7ff08] transition-all group/btn"
-          >
-            <cmd.icon size={12} className="text-[#8899a6] group-hover/btn:text-[#33e7ff] transition-colors" />
-            <span className="text-[8px] uppercase tracking-[0.22em] text-[#8899a6] group-hover/btn:text-[#fff]">{cmd.label}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* History / Status Tooltip */}
-      <div className="mt-3 pl-2">
-        {lastAck ? (
-          <div className="text-[7px] uppercase tracking-[0.28em] text-[#18ff9c] flex items-center gap-2 opacity-70">
-            <div className="w-1 h-1 rounded-full bg-[#18ff9c] animate-pulse" />
-            Last_Chorus_Command: {lastAck.action} // Status: {lastAck.status}
-          </div>
+      <div
+        className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-[10px] font-mono uppercase tracking-[0.18em] ${
+          status === "error"
+            ? "border-chorus-danger/30 bg-chorus-danger/10 text-chorus-danger"
+            : status === "success"
+              ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
+              : "border-white/10 bg-white/5 text-white/40"
+        }`}
+      >
+        {status === "error" ? (
+          <AlertCircle className="h-3.5 w-3.5" />
+        ) : status === "success" ? (
+          <CheckCircle2 className="h-3.5 w-3.5" />
         ) : (
-          <div className="text-[7px] uppercase tracking-[0.28em] text-[#21414f] italic">
-            Awaiting operator intent...
-          </div>
+          <div className="h-3.5 w-3.5 rounded-full border border-white/20" />
         )}
+        <span>{message}</span>
       </div>
-    </div>
+    </motion.div>
   );
 }

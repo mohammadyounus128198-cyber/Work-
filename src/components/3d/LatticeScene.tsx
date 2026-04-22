@@ -1,105 +1,51 @@
-/// <reference types="@react-three/fiber" />
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Stars, PerspectiveCamera, Center, Float } from "@react-three/drei";
+import { OrbitControls, PerspectiveCamera } from "@react-three/drei";
+import { EffectComposer, Bloom } from "@react-three/postprocessing";
+import { useState } from "react";
 import { LatticeNodes } from "./LatticeNodes";
-import { LatticeEdges } from "./LatticeEdges";
-import { GhostPaths } from "./GhostPaths";
-import { OperatorState, PathState } from "../../lib/types";
-import { useMemo } from "react";
+import { Monolith } from "./Monolith";
 
 interface LatticeSceneProps {
-  state: {
-    telemetry: {
-      pathMap: {
-        north: PathState[];
-        east: PathState[];
-        south: PathState[];
-        west: PathState[];
-      };
-    };
-    ui: {
-      selectedSignalId?: string;
-      focusMode: "SCAN" | "FOCUS" | "SIMULATE";
-      targetId?: string;
-    };
-  };
-  onSelectNode: (id: string) => void;
+  hue?: number;
+  speed?: number;
+  complexity?: number;
+  frequency?: number;
 }
 
-import { OmegaSeal } from "./OmegaSeal";
-
-export default function LatticeScene({ state, onSelectNode }: LatticeSceneProps) {
-  // Flatten path map into a single list of 96 paths for the visualizer
-  const allPaths = useMemo(() => {
-    const p = state.telemetry.pathMap;
-    return [...p.north, ...p.east, ...p.south, ...p.west];
-  }, [state.telemetry.pathMap]);
-
-  // Mock predictions for visualization (Simulate Mode)
-  const predictions = useMemo(() => {
-    return [
-      { from: 10, to: 35 },
-      { from: 35, to: 60 },
-      { from: 60, to: 82 },
-    ];
-  }, []);
+export function LatticeScene({ hue, speed, complexity, frequency }: LatticeSceneProps) {
+  const [autoRotate, setAutoRotate] = useState(true);
+  const accentHue = hue ?? 170;
 
   return (
-    <div className="w-full h-full bg-[#05070a] relative">
-      <Canvas shadows dpr={[1, 2]} gl={{ antialias: true }}>
-        <PerspectiveCamera makeDefault position={[52, 30, 52]} fov={46} />
-        
-        <color attach="background" args={["#02050a"]} />
-        <fog attach="fog" args={["#02050a", 36, 170]} />
-        
-        <ambientLight intensity={0.22} />
-        <pointLight position={[30, 60, 30]} intensity={2.6} color="#33e7ff" />
-        <pointLight position={[-30, -30, -30]} intensity={1.8} color="#18ff9c" />
-        <spotLight position={[0, 100, 0]} intensity={2} angle={0.3} penumbra={1} color="#ffffff" castShadow />
-
-        <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
-
-        <Float speed={1.5} rotationIntensity={0.2} floatIntensity={0.5}>
-          <Center>
-            <group>
-              <LatticeNodes 
-                paths={allPaths} 
-                selectedId={state.ui.selectedSignalId} 
-                targetId={state.ui.targetId}
-                onSelect={onSelectNode} 
-              />
-              <LatticeEdges paths={allPaths} />
-              
-              {state.ui.focusMode === "SIMULATE" && <GhostPaths predictions={predictions} />}
-              
-              <OmegaSeal />
-            </group>
-          </Center>
-        </Float>
-
-        <OrbitControls 
-          enablePan={true} 
-          enableZoom={true} 
-          enableRotate={true} 
-          maxDistance={150}
-          minDistance={10}
-          autoRotate={state.ui.focusMode === "SCAN"}
-          autoRotateSpeed={0.5}
+    <div className="absolute inset-0 z-0">
+      <Canvas gl={{ preserveDrawingBuffer: true }}>
+        <PerspectiveCamera makeDefault position={[0, 5, 25]} fov={75} />
+        <OrbitControls
+          enableZoom
+          enablePan
+          enableRotate
+          enableDamping
+          autoRotate={autoRotate}
+          autoRotateSpeed={(speed ?? 1) * 0.2}
+          onStart={() => setAutoRotate(false)}
         />
-      </Canvas>
 
-      {/* 3D Overlay HUD */}
-      <div className="absolute top-6 left-6 pointer-events-none space-y-3">
-        <h3 className="text-[10px] uppercase tracking-[0.4em] text-[#33e7ff] font-black opacity-80">Chorus_Field</h3>
-        <div className="flex items-center gap-4 glass-panel chorus-panel px-3 py-2 glow-border">
-           <div className="flex items-center gap-2">
-             <div className="w-1.5 h-1.5 rounded-full bg-[#33e7ff] animate-pulse status-dot" />
-             <span className="text-[9px] text-white font-mono uppercase tracking-widest">{state.ui.focusMode} VIEW</span>
-           </div>
-           <div className="w-[1px] h-3 bg-[#1a3a45]" />
-           <span className="text-[9px] text-[#8899a6] font-mono">VOICES: {allPaths.length} / ACT: {allPaths.filter(p => p.value > 72).length}</span>
-        </div>
-      </div>
+        <color attach="background" args={["#050a10"]} />
+        <fog attach="fog" args={["#050a10", 18, 62]} />
+
+        <ambientLight intensity={0.65} />
+        <pointLight position={[0, 1, 0]} intensity={22} distance={30} color="#ff5b3d" />
+        <pointLight position={[10, 10, 10]} intensity={1.9} color={`hsl(${accentHue}, 100%, 58%)`} />
+        <pointLight position={[-14, 8, -10]} intensity={1.35} color="#245dff" />
+        <pointLight position={[0, -8, 12]} intensity={0.9} color="#4bdff7" />
+
+        <LatticeNodes hue={hue} speed={speed} complexity={complexity} frequency={frequency} />
+        <Monolith />
+
+        <EffectComposer>
+          <Bloom intensity={1.5} luminanceThreshold={0.1} luminanceSmoothing={0.9} />
+        </EffectComposer>
+      </Canvas>
     </div>
   );
 }

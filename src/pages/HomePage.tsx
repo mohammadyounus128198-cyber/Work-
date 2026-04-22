@@ -1,174 +1,293 @@
-import React from "react";
-import { motion } from "framer-motion";
-import { Shield, Zap, LayoutDashboard, Monitor, Bookmark, ShieldAlert } from "lucide-react";
-import { useCodex } from "../context/CodexContext";
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
+import {
+  Activity,
+  Bookmark,
+  LayoutDashboard,
+  Monitor,
+  Shield,
+  ShieldAlert,
+  Sparkles,
+  Waves,
+} from "lucide-react";
+import { useCodex } from "../context/CodexContext";
 import MeridianSurface from "../components/MeridianSurface";
 import FuturePanel from "../components/FuturePanel";
 import { StrategicAdvisor } from "../components/StrategicAdvisor";
+import DigitalMirrorPanel from "../components/DigitalMirrorPanel";
+import { useLuminaSync } from "../hooks/useLuminaSync";
 import { config } from "../lib/config";
 
 export default function HomePage() {
-  const { 
-    data, 
-    meridian, 
-    alerts, 
-    isProcessing, 
-    lastSync, 
-    focusMode, 
+  const {
+    data,
+    meridian,
+    alerts,
+    isProcessing,
+    lastSync,
+    focusMode,
     setFocusMode,
-    stabilizeSystem 
+    stabilizeSystem,
+    lastEvaluation,
+    phi,
+    readiness,
+    energy,
   } = useCodex();
+  const luminaSync = useLuminaSync();
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
-      {/* HEADER */}
-      <header className="flex justify-between items-center py-5 px-8 border-b border-[#1a3a45] bg-[#00eaff08]">
-        <div className="flex items-center gap-4">
-          <div className={`w-3 h-3 ${isProcessing ? 'bg-[#00ff41] animate-ping' : 'bg-[#00eaff]'}`} />
-          <h1 className="text-xl font-display font-black uppercase tracking-[4px] glow-text">Chorus</h1>
-          <span className="text-[10px] text-[#8899a6] font-mono">Resonance Overview</span>
-        </div>
-
-        {/* CHORUS MODE SELECTOR */}
-        <div className="flex items-center bg-[#05070a] border border-[#1a3a45] p-1 rounded-sm gap-1">
-          {(["SCAN", "FOCUS", "SIMULATE"] as const).map(mode => (
-            <button
-              key={mode}
-              onClick={() => setFocusMode(mode)}
-              className={`px-3 py-1 text-[8px] uppercase tracking-widest transition-all ${
-                focusMode === mode 
-                  ? 'bg-[#00eaff] text-[#05070a] font-black' 
-                  : 'text-[#8899a6] hover:text-[#fff] hover:bg-[#1a3a4533]'
-              }`}
-            >
-              {mode}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-6">
-          <nav className="hidden md:flex gap-4 border-r border-[#1a3a45] pr-6 mr-6">
-             <Link to="/overview" className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-[#00eaff] bg-[#00eaff11] px-3 py-1 border border-[#00eaff33] rounded-xs">
-                <LayoutDashboard size={12} />
-                Overview
-             </Link>
-             <Link to="/" className="flex items-center gap-2 text-[10px] uppercase tracking-widest opacity-40 hover:opacity-100 transition-opacity">
-                <Shield size={12} />
+    <div className="min-h-screen bg-[#02050a] text-white">
+      <header className="sticky top-0 z-50 border-b border-[#17313c] bg-[#03070ccc]/85 backdrop-blur-2xl">
+        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-4 px-6 py-4 md:px-8">
+          <div className="flex items-center gap-4">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full border border-[#33e7ff33] bg-[#33e7ff12] text-[#33e7ff] glow-border">
+              <Sparkles size={18} />
+            </div>
+            <div>
+              <div className="font-display text-lg font-black uppercase tracking-[0.44em] text-white md:text-xl">
                 Chorus
-             </Link>
-             <Link to="/console" className="flex items-center gap-2 text-[10px] uppercase tracking-widest opacity-40 hover:opacity-100 transition-opacity">
-                <Monitor size={12} />
-                Console
-             </Link>
-             <Link to="/codex" className="flex items-center gap-2 text-[10px] uppercase tracking-widest opacity-40 hover:opacity-100 transition-opacity">
-                <Bookmark size={12} />
-                Codex
-             </Link>
+              </div>
+              <div className="text-[10px] uppercase tracking-[0.28em] text-[#7e9ca9]">
+                Digital Mirror Surface
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {(["SCAN", "FOCUS", "SIMULATE"] as const).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setFocusMode(mode)}
+                className={`rounded-full border px-4 py-2 text-[10px] font-bold uppercase tracking-[0.24em] transition-colors ${
+                  focusMode === mode
+                    ? "border-[#33e7ff55] bg-[#33e7ff15] text-white"
+                    : "border-[#17313c] bg-[#071019] text-[#7e9ca9] hover:text-white"
+                }`}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 text-[10px] uppercase tracking-[0.24em] text-[#7e9ca9]">
+            <div className="flex items-center gap-2 rounded-full border border-[#17313c] bg-[#071019] px-3 py-2">
+              <span className={`h-2 w-2 rounded-full ${isProcessing ? "bg-[#18ff9c] animate-pulse" : "bg-[#33e7ff]"}`} />
+              {isProcessing ? "Processing" : "Stable"}
+            </div>
+            <div className="flex items-center gap-2 rounded-full border border-[#17313c] bg-[#071019] px-3 py-2">
+              <Waves size={12} className={luminaSync.isSynced ? "text-[#18ff9c]" : "text-[#ffcb4c]"} />
+              {luminaSync.isSynced ? "Resonance linked" : "Resonance idle"}
+            </div>
+            <div className="hidden rounded-full border border-[#17313c] bg-[#071019] px-3 py-2 md:block">
+              Signals {data.length}
+            </div>
+          </div>
+        </div>
+
+        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3 px-6 pb-4 md:px-8">
+          <nav className="flex flex-wrap gap-2">
+            <NavLink to="/" label="Surface" icon={<LayoutDashboard size={12} />} active />
+            <NavLink to="/lattice" label="Lattice" icon={<Shield size={12} />} />
+            <NavLink to="/console" label="Console" icon={<Monitor size={12} />} />
+            <NavLink to="/codex" label="Codex" icon={<Bookmark size={12} />} />
           </nav>
-          <div className="hidden md:flex gap-6 text-[11px] uppercase opacity-80">
-            <div className="flex items-center gap-1.5"><span className="text-[#8899a6]">STATUS:</span> {isProcessing ? 'PROCESSING' : 'IDLE'}</div>
-            <div className="flex items-center gap-1.5"><span className="text-[#8899a6]">SIGNALS:</span> {data.length}</div>
+          <div className="text-[10px] uppercase tracking-[0.24em] text-[#7e9ca9]">
+            Last sync {lastSync || "Pending"}
           </div>
         </div>
       </header>
 
-      {/* ALERTS */}
-      <div className={`px-8 py-3 min-h-[50px] border-b border-[#1a3a45] overflow-hidden transition-colors ${
-        alerts.length > 0 ? 'bg-[#ff3b3b10]' : 'bg-[#05070a]'
-      }`}>
-        {alerts.length > 0 ? (
-          <div className="flex gap-12 items-center animate-scroll whitespace-nowrap">
-             <div className="flex items-center gap-2 text-[#ff3b3b] font-black tracking-tighter text-sm uppercase">
-               <ShieldAlert size={16} /> [SYSTEM_ALERT_ACTIVE]
-             </div>
-            {alerts.map((a, i) => (
-              <span key={i} className={`flex items-center gap-2 text-[11px] uppercase font-bold ${
-                a.includes("⚠") ? "text-[#ff3b3b]" : "text-[#00ff41]"
-              }`}>
-                {a.includes("⚠") ? <Shield size={12} /> : <Zap size={12} />}
-                {a}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <div className="text-[10px] opacity-40 uppercase tracking-widest flex items-center gap-3">
-             <div className="w-2 h-2 bg-[#00ff41] rounded-full animate-pulse" />
-             Strategic Buffer Stable // Continuous Chorus Synchronization Active
-          </div>
-        )}
-      </div>
+      <main className="mx-auto max-w-[1600px] px-4 py-6 md:px-6 lg:px-8">
+        <DigitalMirrorPanel
+          meridian={meridian}
+          evaluation={lastEvaluation}
+          sync={luminaSync}
+          isProcessing={isProcessing}
+          focusMode={focusMode}
+          dataCount={data.length}
+          lastSync={lastSync}
+          phi={phi}
+          readiness={readiness}
+          energy={energy}
+          onStabilize={stabilizeSystem}
+        />
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* MAIN SURFACE */}
-        <main className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_50%_0%,_#0a0f1f_0%,_#05070a_100%)]">
-          <div className="space-y-[1px] bg-[#1a3a45]">
+        <section className="mt-6 grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+          <div className="overflow-hidden rounded-[1.7rem] border border-[#17313c] bg-[#05090fcc]">
             <MeridianSurface telemetry={meridian} mode={focusMode} />
-            <div className="p-8 space-y-8 bg-[#05070a]">
-              <div className="flex justify-between items-center border-b border-[#1a3a45] pb-2">
-                <h3 className="text-[10px] uppercase tracking-[0.4em] opacity-40">Strategic Operational Feed</h3>
-                <div className="flex gap-4 text-[9px] uppercase opacity-40">
-                  <span>Mem_Load: STABLE</span>
-                  <span>Sync: {lastSync}</span>
+          </div>
+
+          <div className="grid gap-6">
+            <SideCard
+              title="Verification Rail"
+              label={lastEvaluation?.consistency === "FAIL" ? "Consistency fault" : "Truth locked"}
+              accent={lastEvaluation?.consistency === "FAIL" ? "text-[#ff4d64]" : "text-[#18ff9c]"}
+            >
+              <div className="grid gap-3 sm:grid-cols-2">
+                <KeyValue label="Geometry" value={lastEvaluation?.geometryMode.replace(/_/g, " ") ?? "Pending"} />
+                <KeyValue label="Facet" value={lastEvaluation?.activeFacet ?? "Pending"} />
+                <KeyValue label="Attractor" value={lastEvaluation?.inPhiAttractor ? "G_phi" : "Open"} />
+                <KeyValue label="Envelope" value={lastEvaluation ? `${lastEvaluation.W.toFixed(1)} / ${lastEvaluation.M_min}` : "--"} />
+              </div>
+            </SideCard>
+
+            <SideCard title="Operational Focus" label="Live operator stance" accent="text-[#33e7ff]">
+              <div className="space-y-4 text-sm text-[#a5c0cb]">
+                <p>
+                  Risk tolerance is set to <span className="text-white">{config.riskTolerance.toFixed(2)}</span> and
+                  alert sensitivity is <span className="text-white">{config.alertSensitivity.toFixed(2)}</span>.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {config.focus.map((entry) => (
+                    <span
+                      key={entry}
+                      className="rounded-full border border-[#17313c] bg-[#071019] px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-[#7e9ca9]"
+                    >
+                      {entry}
+                    </span>
+                  ))}
                 </div>
               </div>
-              <FuturePanel data={data} />
+            </SideCard>
+
+            <div className="rounded-[1.7rem] border border-[#17313c] bg-[#05090fcc] p-5 md:p-6">
+              <StrategicAdvisor />
             </div>
           </div>
-        </main>
+        </section>
 
-        {/* SIDEBAR */}
-        <aside className="hidden lg:flex flex-col w-[300px] border-l border-[#1a3a45] p-8 gap-8 overflow-y-auto">
-          <div className="space-y-4">
-            <h4 className="text-[10px] uppercase text-[#8899a6] tracking-widest font-bold">Resilience_Config</h4>
-            <div className="text-[11px] bg-[#00eaff05] p-3 border border-[#1a3a45] space-y-2 opacity-80 uppercase tracking-tighter">
-              <div className="flex justify-between">
-                <span>Risk Tolerance:</span>
-                <span className="text-[#00eaff]">{config.riskTolerance.toFixed(2)}</span>
+        <section className="mt-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="rounded-[1.7rem] border border-[#17313c] bg-[#05090fcc] p-6">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-[#17313c] pb-4">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.28em] text-[#7e9ca9]">Strategic Operational Feed</div>
+                <div className="mt-2 text-sm text-[#a5c0cb]">
+                  Live signal flow, surfaced instead of hidden.
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span>Alert Sensitivity:</span>
-                <span className="text-[#ffcc00]">{config.alertSensitivity.toFixed(2)}</span>
+              <div className="flex items-center gap-2 rounded-full border border-[#17313c] bg-[#071019] px-3 py-2 text-[10px] uppercase tracking-[0.22em] text-[#7e9ca9]">
+                <Activity size={12} className="text-[#33e7ff]" />
+                {data.length} live signals
               </div>
             </div>
+            <FuturePanel data={data} />
           </div>
 
-          <StrategicAdvisor />
+          <div className="grid gap-6">
+            <SideCard
+              title="Alert Stream"
+              label={alerts.length > 0 ? "Pressure detected" : "System calm"}
+              accent={alerts.length > 0 ? "text-[#ff4d64]" : "text-[#18ff9c]"}
+            >
+              {alerts.length > 0 ? (
+                <div className="space-y-3">
+                  {alerts.slice(0, 4).map((alert, index) => (
+                    <div
+                      key={`${alert}-${index}`}
+                      className="rounded-[1.2rem] border border-[#ff4d642a] bg-[#16080d] px-4 py-3 text-sm text-[#ffd7dd]"
+                    >
+                      <div className="mb-1 flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-[#ff8a9a]">
+                        <ShieldAlert size={12} />
+                        alert
+                      </div>
+                      {alert}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-[1.2rem] border border-[#17313c] bg-[#071019] px-4 py-4 text-sm text-[#a5c0cb]">
+                  No current alert bursts. The mirror is reading a stable buffer.
+                </div>
+              )}
+            </SideCard>
 
-          <div className="space-y-4">
-            <h4 className="text-[10px] uppercase text-[#8899a6] tracking-widest font-bold">Chorus_Direct_Links</h4>
-            <div className="space-y-3">
-              <button 
-                onClick={stabilizeSystem}
-                className="w-full text-left p-3 border border-[#00eaff33] rounded-xs bg-[#00eaff05] hover:bg-[#00eaff11] transition-all flex flex-col gap-1"
-              >
-                  <div className="text-[9px] uppercase tracking-widest text-[#00eaff] font-black px-1 border-l-2 border-[#00eaff]">Stabilize_Lattice</div>
-                  <p className="text-[8px] opacity-40 uppercase">Broadcast stabilization pulse to all nodes.</p>
-              </button>
-
-              <Link to="/" className="block p-3 border border-[#1a3a45] rounded-xs bg-[#ffffff02] hover:border-[#00ff41] transition-all">
-                  <div className="text-[9px] uppercase tracking-widest text-[#00ff41] font-black">Chorus_Surface</div>
-                  <p className="text-[8px] opacity-40 uppercase">Engage the live resonance lattice.</p>
-              </Link>
-
-              <Link to="/console" className="block p-3 border border-[#1a3a45] rounded-xs bg-[#ffffff02] hover:border-[#00eaff] transition-all">
-                  <div className="text-[9px] uppercase tracking-widest text-[#00eaff] font-black">Operator_Console</div>
-                  <p className="text-[8px] opacity-40 uppercase">Audit raw operational traces and guardrails.</p>
-              </Link>
-            </div>
+            <SideCard title="Direct Actions" label="Fast operator hops" accent="text-[#ffcb4c]">
+              <div className="grid gap-3">
+                <ActionLink to="/lattice" title="Open lattice field" note="Inspect the reactive 3D surface and node focus." />
+                <ActionLink to="/console" title="Audit the console" note="Review traces, guardrails, and system history." />
+                <button
+                  onClick={stabilizeSystem}
+                  className="rounded-[1.2rem] border border-[#18ff9c33] bg-[#18ff9c12] px-4 py-4 text-left transition-colors hover:bg-[#18ff9c1b]"
+                >
+                  <div className="text-[10px] uppercase tracking-[0.22em] text-[#18ff9c]">Stabilize field</div>
+                  <div className="mt-2 text-sm text-[#d8fff0]">Push a corrective pulse through the runtime lattice.</div>
+                </button>
+              </div>
+            </SideCard>
           </div>
-
-          <div className="mt-auto space-y-4 pt-4 border-t border-[#1a3a45]">
-             <div className="text-[9px] uppercase opacity-40 flex items-center gap-2">
-                <div className="w-2 h-2 bg-[#00ff41] rounded-full" />
-                System_Integrity: 100%
-             </div>
-          <div className="text-[10px] text-[#8899a6] uppercase tracking-tighter italic">
-                Chorus Resonance Core // Production_Runtime_Active
-             </div>
-          </div>
-        </aside>
-      </div>
+        </section>
+      </main>
     </div>
+  );
+}
+
+function NavLink({
+  to,
+  label,
+  icon,
+  active = false,
+}: {
+  to: string;
+  label: string;
+  icon: ReactNode;
+  active?: boolean;
+}) {
+  return (
+    <Link
+      to={to}
+      className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[10px] font-bold uppercase tracking-[0.22em] transition-colors ${
+        active
+          ? "border-[#33e7ff44] bg-[#33e7ff15] text-white"
+          : "border-[#17313c] bg-[#071019] text-[#7e9ca9] hover:text-white"
+      }`}
+    >
+      {icon}
+      {label}
+    </Link>
+  );
+}
+
+function SideCard({
+  title,
+  label,
+  accent,
+  children,
+}: {
+  title: string;
+  label: string;
+  accent: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-[1.7rem] border border-[#17313c] bg-[#05090fcc] p-5 md:p-6">
+      <div className="mb-5 flex items-start justify-between gap-4 border-b border-[#17313c] pb-4">
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.28em] text-[#7e9ca9]">{title}</div>
+          <div className={`mt-2 text-sm font-semibold ${accent}`}>{label}</div>
+        </div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function KeyValue({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[1.1rem] border border-[#17313c] bg-[#071019] px-4 py-3">
+      <div className="text-[10px] uppercase tracking-[0.22em] text-[#7e9ca9]">{label}</div>
+      <div className="mt-2 text-sm font-semibold text-white">{value}</div>
+    </div>
+  );
+}
+
+function ActionLink({ to, title, note }: { to: string; title: string; note: string }) {
+  return (
+    <Link
+      to={to}
+      className="rounded-[1.2rem] border border-[#17313c] bg-[#071019] px-4 py-4 transition-colors hover:border-[#33e7ff33]"
+    >
+      <div className="text-[10px] uppercase tracking-[0.22em] text-[#33e7ff]">{title}</div>
+      <div className="mt-2 text-sm text-[#a5c0cb]">{note}</div>
+    </Link>
   );
 }

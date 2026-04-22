@@ -22,5 +22,11 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "exclude": [
+    "dist",
+    "node_modules",
+    "_inspect_chorus_zip",
+    "_inspect_v042_zip"
+  ]
 }

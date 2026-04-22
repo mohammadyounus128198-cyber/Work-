@@ -1,0 +1,122 @@
+{
+  "$id": "https://example.org/schemas/nonagram-codex.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Nonagram Codex",
+  "type": "object",
+  "properties": {
+    "moduleName": {
+      "type": "string",
+      "const": "NonagramCodex"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^1\\.0\\.0$"
+    },
+    "seal": {
+      "type": "boolean",
+      "const": true
+    },
+    "plates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"]
+          },
+          "name": { "type": "string" },
+          "role": { "type": "string" },
+          "stateType": {
+            "type": "string",
+            "enum": ["Active", "Structural", "Transform", "Perturbation", "Stabilization", "Merge", "Invocation", "Recurrence", "Terminal"]
+          }
+        },
+        "required": ["id", "name", "role", "stateType"],
+        "additionalProperties": false
+      },
+      "minItems": 9,
+      "maxItems": 9
+    },
+    "operators": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "plateId": {
+            "type": "string",
+            "enum": ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"]
+          },
+          "name": { "type": "string" },
+          "symbol": { "type": "string" },
+          "description": { "type": "string" }
+        },
+        "required": ["plateId", "name", "symbol"],
+        "additionalProperties": false
+      }
+    },
+    "transitionGraph": {
+      "type": "object",
+      "properties": {
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string",
+                "enum": ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"]
+              },
+              "to": {
+                "type": "string"
+              }
+            },
+            "required": ["from", "to"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["edges"],
+      "additionalProperties": false
+    },
+    "infinityCore": {
+      "type": "object",
+      "properties": {
+        "symbol": { "type": "string", "const": "∞" },
+        "role": { "type": "string" }
+      },
+      "required": ["symbol"],
+      "additionalProperties": false
+    },
+    "constraints": {
+      "type": "object",
+      "properties": {
+        "maxRecursionDepth": { "type": "integer", "minimum": 1 },
+        "coherenceThreshold": { "type": "number" }
+      },
+      "required": ["maxRecursionDepth", "coherenceThreshold"],
+      "additionalProperties": false
+    },
+    "regulators": {
+      "type": "object",
+      "properties": {
+        "spiralGrowthFactor": { "type": "number", "const": 1.618 },
+        "fractalPerturbationModel": { "type": "string" }
+      },
+      "required": ["spiralGrowthFactor"],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "moduleName",
+    "version",
+    "seal",
+    "plates",
+    "operators",
+    "transitionGraph",
+    "infinityCore",
+    "constraints",
+    "regulators"
+  ],
+  "additionalProperties": false
+}

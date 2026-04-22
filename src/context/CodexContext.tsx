@@ -4,7 +4,9 @@ import {
   MeridianTelemetry, 
   CodexStep, 
   TraceAnnotation, 
-  GuardrailEvent 
+  GuardrailEvent,
+  EnvelopeEvaluation,
+  PlateId,
 } from "../lib/types";
 import { generateAlerts } from "../lib/alerts";
 import { generateOracleAnalysis } from "../services/geminiService";
@@ -14,6 +16,8 @@ import {
   generateDemoSignals, 
   generateDemoStep 
 } from "../lib/demoRuntime";
+import { evaluateEnvelope } from "../lib/oracleKernelCore";
+import { ACTIVE_MIRROR_CONTRACT } from "../lib/oracleMirror";
 
 interface CodexContextType {
   data: ProcessedSignal[];
@@ -27,6 +31,7 @@ interface CodexContextType {
   lastSync: string;
   phi: number;
   readiness: number;
+  s: number;
   energy: number;
   rateLimitState: "STABLE" | "THROTTLED";
   bootSequence: boolean;
@@ -43,6 +48,7 @@ interface CodexContextType {
   trace: any[];
   oracleInsight: any | null;
   isAnalyzing: boolean;
+  lastEvaluation: EnvelopeEvaluation | null;
 }
 
 const CodexContext = createContext<CodexContextType | undefined>(undefined);
@@ -63,6 +69,7 @@ export const CodexProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [lastSync, setLastSync] = useState<string>("");
   const [phi, setPhi] = useState(0);
   const [readiness, setReadiness] = useState(0);
+  const [s, setS] = useState(0);
   const [energy, setEnergy] = useState(0);
   const [rateLimitState, setRateLimitState] = useState<"STABLE" | "THROTTLED">("STABLE");
   const [focusMode, setFocusModeLocal] = useState<"SCAN" | "FOCUS" | "SIMULATE">("SCAN");
@@ -73,8 +80,16 @@ export const CodexProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [trace, setTrace] = useState<any[]>([]);
   const [oracleInsight, setOracleInsight] = useState<any | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [lastEvaluation, setLastEvaluation] = useState<EnvelopeEvaluation | null>(null);
   const [usingDemo, setUsingDemo] = useState(false);
   const demoRef = React.useRef<any>(generateInitialState());
+
+  const inferSynergy = (nextPhi: number, nextReadiness: number, nextEnergy: number) => {
+    return Math.max(
+      0,
+      Math.min(100, Number((Math.max(0, nextPhi - 60) * 0.7 + nextReadiness * 0.18 + nextEnergy * 0.12).toFixed(1))),
+    );
+  };
 
   const runOracleAnalysis = async () => {
     if (!meridian) return;
@@ -177,6 +192,7 @@ export const CodexProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         if (labData.telemetry) setMeridian(labData.telemetry);
         if (labData.phi !== undefined) setPhi(labData.phi);
         if (labData.readiness !== undefined) setReadiness(labData.readiness);
+        setS(labData.s !== undefined ? labData.s : inferSynergy(labData.phi ?? phi, labData.readiness ?? readiness, labData.energy ?? energy));
         if (labData.energy !== undefined) setEnergy(labData.energy);
         if (labData.rateLimitState) setRateLimitState(labData.rateLimitState);
 
@@ -232,10 +248,12 @@ export const CodexProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         demoRef.current.phi = Math.max(0, Math.min(100, demoRef.current.phi + (Math.random() - 0.5) * 4));
         demoRef.current.energy = Math.max(0, Math.min(100, demoRef.current.energy + (Math.random() - 0.5) * 2));
         demoRef.current.readiness = Math.max(0, Math.min(100, demoRef.current.readiness + (Math.random() - 0.5) * 3));
+        demoRef.current.s = inferSynergy(demoRef.current.phi, demoRef.current.readiness, demoRef.current.energy);
         
         setPhi(demoRef.current.phi);
         setEnergy(demoRef.current.energy);
         setReadiness(demoRef.current.readiness);
+        setS(demoRef.current.s);
         
         const demoTel = createDemoStaticTelemetry(demoRef.current);
         setMeridian(demoTel);
@@ -275,9 +293,14 @@ export const CodexProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           else if (payload.signals) setData(payload.signals);
           else if (payload.data) setData(payload.data);
 
+          const nextPhi = payload.phi !== undefined ? payload.phi : phi;
+          const nextReadiness = payload.readiness !== undefined ? payload.readiness : readiness;
+          const nextEnergy = payload.energy !== undefined ? payload.energy : energy;
+
           if (payload.readiness !== undefined) setReadiness(payload.readiness);
           if (payload.phi !== undefined) setPhi(payload.phi);
           if (payload.energy !== undefined) setEnergy(payload.energy);
+          setS(payload.s !== undefined ? payload.s : inferSynergy(nextPhi, nextReadiness, nextEnergy));
           if (payload.resilience?.rateLimitState) setRateLimitState(payload.resilience.rateLimitState);
 
           if (payload.telemetry) {
@@ -379,6 +402,56 @@ export const CodexProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
   }, []);
 
+  useEffect(() => {
+    const emptyPathMap = {
+      north: [],
+      east: [],
+      south: [],
+      west: [],
+    };
+
+    const evaluation = evaluateEnvelope(
+      {
+        sessionId: "mirror-ui",
+        operatorId: "MIRROR",
+        tick: Date.now(),
+        phi,
+        readiness,
+        s,
+        energy,
+        device: "DESKTOP",
+        engine: {
+          phase: focusMode === "SIMULATE" ? "ACT" : focusMode === "FOCUS" ? "CHOOSE" : "GENERATE",
+          status: "ACTIVE",
+        },
+        telemetry: {
+          SVI: meridian?.vitalityIndex ?? 0,
+          CBU: meridian?.cognitiveBandwidth ?? 0,
+          ESQ: meridian?.environmentalQuality ?? 0,
+          OM: meridian?.operationalMomentum ?? 0,
+          AP: meridian?.anomalyPressure ?? 0,
+          pathMap: meridian?.pathMap ?? emptyPathMap,
+        },
+        steps: codexHistory,
+        annotations,
+        guardrailEvents,
+        plateCounts: plateCounts as Record<PlateId, number>,
+        resilience: {
+          rateLimitState,
+          circuitBreaker: "CLOSED",
+        },
+        ui: {
+          selectedSignalId,
+          focusMode,
+        },
+        updatedAt: Date.now(),
+      },
+      ACTIVE_MIRROR_CONTRACT,
+    );
+
+    setLastEvaluation(evaluation);
+  }, [annotations, codexHistory, energy, focusMode, guardrailEvents, meridian, phi, plateCounts, rateLimitState, readiness, s, selectedSignalId]);
+
   return (
     <CodexContext.Provider value={{
       data,
@@ -392,6 +465,7 @@ export const CodexProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       lastSync,
       phi,
       readiness,
+      s,
       energy,
       rateLimitState,
       bootSequence,
@@ -402,6 +476,7 @@ export const CodexProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       trace,
       oracleInsight,
       isAnalyzing,
+      lastEvaluation,
       addAnnotation,
       setFocusMode,
       setSelectedSignal,

@@ -164,6 +164,7 @@ export interface OperatorState {
   tick: number; // Added tick tracking
   phi: number; // Phase Potential (0-100)
   readiness: number; // Compression/Readiness stock (0-100)
+  s?: number; // Synergy / nonlinear accumulation stock (0-100)
   energy: number; // e from TLA+ (0-100), seeded from phi
   device: "DESKTOP" | "MOBILE" | "CONSOLE";
   engine: {
@@ -197,6 +198,7 @@ export interface OperatorState {
     focusMode: "SCAN" | "FOCUS" | "SIMULATE";
     targetId?: string;
   };
+  lastEvaluation?: EnvelopeEvaluation | null;
   updatedAt: number;
 }
 
@@ -280,4 +282,53 @@ export interface Config {
   riskTolerance: number;
   alertSensitivity: number;
   focus: string[];
+}
+
+export interface EnvelopeEvaluation {
+  W: number;
+  M_min: number;
+  inside: boolean;
+  margin: number;
+  activeFacet: string;
+  facetLabel: string;
+  geometryMode: "2D_VERIFIED" | "3D_TRUE_FRONT";
+  frontRank: 1 | 2;
+  degenerate: boolean;
+  activeFacetSet: string[];
+  inPhiAttractor: boolean;
+  attractorId: "G_phi" | null;
+  consistency: "PASS" | "FAIL";
+  lawCompliance: {
+    phiA: boolean;
+    nearRecursion: boolean;
+  };
+}
+
+export interface MirrorContract {
+  id: string;
+  name: string;
+  version: string;
+  geometryMode: "2D_VERIFIED" | "3D_TRUE_FRONT";
+  frontRank: 1 | 2;
+  degenerate: boolean;
+  phiFamily: string[];
+  metadata: {
+    dimension: number;
+    phi_threshold: number;
+    laws: Array<{
+      id: string;
+      name: string;
+      formal: string;
+    }>;
+  };
+  constraints: {
+    C_phi: number;
+    C_r: number;
+    C_s?: number;
+    M_pred: number;
+  };
+  attractor?: {
+    id: "G_phi";
+    governing_facets: string[];
+  };
 }
