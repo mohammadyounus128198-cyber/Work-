@@ -44,6 +44,10 @@
     text-shadow: 0 0 10px rgba(0, 245, 212, 0.4);
   }
 
+  .hover\:bg-chorus-primary\/8:hover {
+    background-color: rgba(0, 245, 212, 0.08);
+  }
+
   .glow-border {
     @apply border-chorus-primary/30 shadow-[0_0_20px_rgba(0,245,212,0.1)];
   }

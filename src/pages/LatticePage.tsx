@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, Bell, BellOff, Box, Camera, Shield, Zap } from "lucide-react";
 import { LatticeScene } from "../components/3d/LatticeScene";
@@ -93,6 +93,7 @@ export default function LatticePage() {
   const [currentPlateIdx, setCurrentPlateIdx] = useState(0);
   const [lastLinkTimestamp, setLastLinkTimestamp] = useState(0);
   const [notificationsVisible, setNotificationsVisible] = useState(true);
+  const [tick, setTick] = useState(0);
 
   const lastAppliedTimestampRef = useRef(0);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -102,6 +103,12 @@ export default function LatticePage() {
       setCurrentPlateIdx((previous) => (previous + 1) % DEFAULT_PLATES.length);
     }, 2618);
     return () => clearInterval(timer);
+  }, []);
+
+  // Tick for live clock
+  useEffect(() => {
+    const t = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(t);
   }, []);
 
   const activePlate = useMemo(() => DEFAULT_PLATES[currentPlateIdx], [currentPlateIdx]);
@@ -239,301 +246,480 @@ export default function LatticePage() {
     link.click();
   }, [carrierHz, complexityLevel, latticeNodeCount, resParams.frequency, resParams.hue]);
 
+  const nowStr = useMemo(() => {
+    void tick;
+    return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  }, [tick]);
+
   return (
-    <main className="relative h-screen w-full overflow-hidden bg-chorus-bg select-none">
-      <div className="lattice-bg" />
+    <main className="relative h-screen w-full overflow-hidden bg-[#030507] select-none font-mono">
+      {/* Background grid */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-0"
+        style={{
+          background: `
+            radial-gradient(ellipse 70% 55% at 50% 40%, rgba(0,245,212,0.055) 0%, transparent 70%),
+            linear-gradient(rgba(0,245,212,0.028) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0,245,212,0.028) 1px, transparent 1px)
+          `,
+          backgroundSize: "auto, 56px 56px, 56px 56px",
+        }}
+      />
+
+      {/* 3D field */}
       <LatticeScene
         hue={resParams.hue}
         speed={resParams.speed}
         complexity={resParams.complexity}
         frequency={resParams.frequency}
       />
+
+      {/* Notifications */}
       <Notifications
         visible={notificationsVisible}
-        className="right-6 top-28 w-[min(22rem,calc(100vw-2rem))] md:right-8 md:top-32"
+        className="right-6 top-[5.5rem] w-[min(22rem,calc(100vw-2rem))] md:right-8"
       />
 
-      <nav className="relative z-10 flex items-center justify-between px-8 py-6">
-        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-4">
-          <div className="flex h-10 w-10 items-center justify-center border-2 border-chorus-primary rotate-45">
-            <div className="h-4 w-4 -rotate-45 bg-chorus-primary" />
+      {/* ── NAV ── */}
+      <nav className="relative z-20 flex items-center justify-between px-6 py-4 border-b border-white/[0.06] bg-black/50 backdrop-blur-xl">
+        {/* Brand */}
+        <motion.div
+          initial={{ opacity: 0, x: -16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.4 }}
+          className="flex items-center gap-3"
+        >
+          {/* Corner-bracket logo */}
+          <div className="relative h-9 w-9 shrink-0">
+            <span className="absolute left-0 top-0 h-3 w-3 border-l-2 border-t-2 border-chorus-primary" />
+            <span className="absolute right-0 top-0 h-3 w-3 border-r-2 border-t-2 border-chorus-primary" />
+            <span className="absolute bottom-0 left-0 h-3 w-3 border-b-2 border-l-2 border-chorus-primary" />
+            <span className="absolute bottom-0 right-0 h-3 w-3 border-b-2 border-r-2 border-chorus-primary" />
+            <div className="absolute inset-2 flex items-center justify-center">
+              <div className="h-2 w-2 rounded-sm bg-chorus-primary shadow-[0_0_8px_rgba(0,245,212,0.7)]" />
+            </div>
           </div>
-          <div className="flex flex-col">
-            <span className="glow-text text-2xl font-bold uppercase tracking-[0.2em] text-chorus-primary leading-none">Chorus</span>
-            <span className="mt-1 text-[8px] font-mono italic tracking-[0.4em] text-chorus-primary/40">FREQUENCY_FIELD_SURFACE</span>
+          <div>
+            <div className="text-[15px] font-bold uppercase tracking-[0.36em] text-white leading-none">Chorus</div>
+            <div className="mt-0.5 text-[8px] tracking-[0.42em] text-chorus-primary/50 uppercase">
+              Frequency Field Surface
+            </div>
           </div>
         </motion.div>
 
+        {/* Center: live freq readout */}
         <motion.div
-          initial={{ opacity: 0, x: 20 }}
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          className="hidden lg:flex items-center gap-6"
+        >
+          <NavStat label="Core" value={`${CORE_FREQUENCY_HZ.toFixed(2)} Hz`} accent="text-chorus-primary" />
+          <div className="h-6 w-px bg-white/10" />
+          <NavStat label="Carrier" value={`${carrierHz.toFixed(2)} Hz`} accent="text-sky-400" />
+          <div className="h-6 w-px bg-white/10" />
+          <NavStat label="Drive" value={`${resParams.frequency.toFixed(2)}×`} accent="text-amber-400" />
+          <div className="h-6 w-px bg-white/10" />
+          <NavStat label="Nodes" value={String(latticeNodeCount)} accent="text-white/70" />
+        </motion.div>
+
+        {/* Right: controls */}
+        <motion.div
+          initial={{ opacity: 0, x: 16 }}
           animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.4 }}
           role="toolbar"
           aria-label="Scene controls"
-          className="flex flex-wrap items-center justify-end gap-3 text-[10px] font-mono uppercase tracking-[0.2em]"
+          className="flex items-center gap-2"
         >
+          {/* Sync badge */}
           <div
             role="status"
             aria-live="polite"
             className={cn(
-              "flex items-center gap-2 rounded-full border px-3 py-1 transition-all duration-300",
+              "flex items-center gap-1.5 rounded px-2.5 py-1.5 text-[9px] uppercase tracking-[0.22em] transition-all duration-300 border",
               isSynced
-                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
-                : "border-white/10 bg-white/5 text-white/25"
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                : "border-white/8 bg-white/4 text-white/30"
             )}
           >
-            <div
+            <span
               className={cn(
-                "h-1.5 w-1.5 rounded-full shadow-[0_0_8px]",
-                isSynced ? "animate-pulse bg-emerald-400 shadow-emerald-400" : "bg-white/20"
+                "h-1.5 w-1.5 rounded-full",
+                isSynced ? "animate-pulse bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" : "bg-white/20"
               )}
             />
-            <span>{isSynced ? "TUNER_LINKED" : "MANUAL_FIELD"}</span>
+            {isSynced ? "Linked" : "Manual"}
           </div>
 
-          <div className="hidden items-center gap-2 text-cyan-400/70 lg:flex">
-            <span className="h-2 w-2 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.6)]" />
-            <span>Carrier: {carrierHz.toFixed(2)}Hz</span>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setNotificationsVisible((current) => !current)}
-            aria-pressed={notificationsVisible}
-            aria-label={notificationsVisible ? "Hide activity feed" : "Show activity feed"}
-            title={notificationsVisible ? "Hide activity feed" : "Show activity feed"}
-            className="group flex min-h-10 items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-white/70 transition-all hover:border-chorus-primary/40 hover:bg-chorus-primary/10 hover:text-chorus-primary focus-visible:border-chorus-primary focus-visible:text-chorus-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chorus-primary/40"
+          <NavButton
+            onClick={() => setNotificationsVisible((c) => !c)}
+            ariaLabel={notificationsVisible ? "Hide activity feed" : "Show activity feed"}
+            ariaPressed={notificationsVisible}
           >
-            {notificationsVisible ? (
-              <Bell className="h-3.5 w-3.5 transition-transform group-hover:scale-110" />
-            ) : (
-              <BellOff className="h-3.5 w-3.5 transition-transform group-hover:scale-110" />
-            )}
-            <span className="text-[9px]">{notificationsVisible ? "ACTIVITY_ON" : "ACTIVITY_OFF"}</span>
-          </button>
+            {notificationsVisible ? <Bell className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
+            <span className="text-[9px] uppercase tracking-[0.2em]">{notificationsVisible ? "Feed" : "Hidden"}</span>
+          </NavButton>
 
-          <button
-            type="button"
-            onClick={captureScreen}
-            aria-label="Capture resonance field as PNG"
-            title="Capture resonance field as PNG"
-            className="group flex min-h-10 items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-white/80 transition-all hover:border-chorus-primary/40 hover:bg-chorus-primary/10 hover:text-chorus-primary focus-visible:border-chorus-primary focus-visible:text-chorus-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chorus-primary/40"
-          >
-            <Camera className="h-3.5 w-3.5 transition-transform group-hover:scale-110" />
-            <span className="text-[9px]">RES_CAPTURE</span>
-          </button>
+          <NavButton onClick={captureScreen} ariaLabel="Capture resonance field as PNG">
+            <Camera className="h-3.5 w-3.5" />
+            <span className="text-[9px] uppercase tracking-[0.2em]">Capture</span>
+          </NavButton>
         </motion.div>
       </nav>
 
-      <section className="relative z-10 flex h-[calc(100vh-168px)] gap-6 px-8 pb-6">
-        <div className="flex w-[20rem] shrink-0 flex-col gap-4">
-          <GlassHUD title="Field Telemetry" delay={0.18} className="border-white/10">
-            <div className="space-y-4 pt-2">
+      {/* ── MAIN GRID ── */}
+      <section className="relative z-10 grid h-[calc(100vh-48px-56px)] grid-cols-[18rem_1fr_22rem] gap-0">
+
+        {/* LEFT PANEL */}
+        <aside className="flex flex-col gap-3 border-r border-white/[0.06] bg-black/30 backdrop-blur-sm p-4 overflow-auto">
+
+          {/* Field Telemetry */}
+          <PanelBlock title="Field Telemetry" accent="cyan">
+            <div className="space-y-3 pt-1">
               {[
-                { label: "Core Frequency", value: `${CORE_FREQUENCY_HZ.toFixed(2)} Hz`, percent: 100 },
-                { label: "Carrier Output", value: `${carrierHz.toFixed(2)} Hz`, percent: (carrierHz / (CORE_FREQUENCY_HZ * 4.2)) * 100 },
-                { label: "Shell Radius", value: `${fieldRadius.toFixed(1)} u`, percent: (fieldRadius / 5.5) * 100 },
-                { label: "Node Count", value: `${latticeNodeCount}`, percent: (latticeNodeCount / 500) * 100 },
+                { label: "Core Freq", value: `${CORE_FREQUENCY_HZ.toFixed(2)} Hz`, pct: 100, color: "#00f5d4" },
+                { label: "Carrier Out", value: `${carrierHz.toFixed(2)} Hz`, pct: (carrierHz / (CORE_FREQUENCY_HZ * 4.2)) * 100, color: "#38bdf8" },
+                { label: "Shell Radius", value: `${fieldRadius.toFixed(1)} u`, pct: (fieldRadius / 5.5) * 100, color: "#a78bfa" },
+                { label: "Node Count", value: String(latticeNodeCount), pct: (latticeNodeCount / 500) * 100, color: "#fbbf24" },
               ].map((item) => (
-                <div key={item.label} className="space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-white/50">{item.label}</span>
-                    <span className="font-mono text-chorus-primary">{item.value}</span>
+                <div key={item.label}>
+                  <div className="flex justify-between text-[10px] mb-1.5">
+                    <span className="text-white/45">{item.label}</span>
+                    <span style={{ color: item.color }}>{item.value}</span>
                   </div>
-                  <div className="h-1 w-full overflow-hidden rounded-full bg-white/5">
+                  <div className="h-0.5 w-full rounded-full bg-white/8 overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
-                      animate={{ width: `${clamp(item.percent, 0, 100)}%` }}
-                      className="h-full bg-chorus-primary shadow-[0_0_10px_rgba(0,245,212,0.35)]"
+                      animate={{ width: `${clamp(item.pct, 0, 100)}%` }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
+                      className="h-full rounded-full"
+                      style={{ background: item.color, boxShadow: `0 0 8px ${item.color}66` }}
                     />
                   </div>
                 </div>
               ))}
             </div>
-          </GlassHUD>
+          </PanelBlock>
 
-          <GlassHUD title="Harmonic Intensity" delay={0.24} className="flex-1 border-white/10">
-            <div className="flex h-full items-end gap-2 pt-6">
+          {/* Harmonic Intensity */}
+          <PanelBlock title="Harmonic Intensity" accent="amber" className="flex-1 min-h-0">
+            <div className="flex h-full items-end gap-1.5 pt-4 pb-1">
               {shellTelemetry.map((shell) => (
                 <div key={shell.role} className="flex flex-1 flex-col items-center gap-2">
                   <motion.div
                     initial={{ height: 0 }}
                     animate={{ height: `${shell.energy}%` }}
-                    className="w-full rounded-t-md"
+                    transition={{ duration: 0.6, ease: "easeOut" }}
+                    className="w-full rounded-t-sm"
                     style={{
-                      background: `linear-gradient(180deg, ${shell.color}, rgba(255,255,255,0.08))`,
+                      background: `linear-gradient(180deg, ${shell.color} 0%, ${shell.color}22 100%)`,
+                      boxShadow: `0 0 12px ${shell.color}44`,
                     }}
                   />
                   <div className="text-center">
-                    <div className="text-[9px] font-mono uppercase tracking-[0.16em] text-white/40">{shell.role}</div>
-                    <div className="text-[9px] text-white/70">{shell.baseHz.toFixed(2)}</div>
+                    <div className="text-[8px] uppercase tracking-widest text-white/30">{shell.role}</div>
+                    <div className="text-[8px] text-white/55">{shell.baseHz.toFixed(1)}</div>
                   </div>
                 </div>
               ))}
             </div>
-          </GlassHUD>
-        </div>
+          </PanelBlock>
+        </aside>
 
-        <div className="flex min-w-0 flex-1 items-center justify-center">
-          <div className="pointer-events-none flex w-full max-w-[42rem] flex-col items-center gap-6">
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0, scale: 1 + (resParams.frequency - 1) * 0.03 }}
-              transition={{ duration: 0.5 }}
-              className="relative aspect-square w-full max-w-[30rem] overflow-hidden rounded-[2.75rem] border border-white/12 bg-black/30 shadow-[0_0_90px_rgba(0,0,0,0.45)] backdrop-blur-md"
-            >
-              <div
-                className="absolute inset-0"
-                style={{
-                  background:
-                    "radial-gradient(circle at center, rgba(255,44,32,0.98) 0%, rgba(255,106,44,0.96) 17%, rgba(255,226,94,0.88) 33%, rgba(118,228,179,0.78) 52%, rgba(76,201,240,0.72) 70%, rgba(56,107,255,0.82) 100%)",
-                }}
-              />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.18),transparent_52%)] mix-blend-screen" />
-              <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:38px_38px]" />
+        {/* CENTER: 3D canvas area + freq readout */}
+        <div className="flex flex-col items-center justify-between py-6 px-4 overflow-hidden">
 
-              <motion.div
-                animate={{
-                  scale: 1 + resParams.speed * 0.035,
-                  opacity: 0.28 + (resParams.frequency / 4.2) * 0.2,
-                }}
-                transition={{ duration: 1.8, repeat: Infinity, repeatType: "mirror" }}
-                className="absolute inset-[18%] rounded-full border border-white/35 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.2),transparent_70%)] shadow-[0_0_80px_rgba(255,130,60,0.3)]"
-              />
-
-              <motion.div
-                animate={{ scale: 0.96 + (resParams.frequency / 4.2) * 0.18 }}
-                transition={{ duration: 2.2, repeat: Infinity, repeatType: "mirror" }}
-                className="absolute inset-[31%] rounded-full bg-[radial-gradient(circle_at_center,rgba(255,40,30,0.98),rgba(255,110,44,0.7),transparent_74%)] blur-[2px]"
-              />
-
-              <div className="absolute left-5 top-5 rounded-full border border-white/20 bg-black/25 px-3 py-1 text-[10px] font-mono uppercase tracking-[0.2em] text-white/75">
-                Core Frequency Map
-              </div>
-              <div className="absolute bottom-5 left-5 max-w-[13rem] text-[10px] font-mono uppercase tracking-[0.18em] text-white/70">
-                Single-node truth. Radial decay moves from coherent core to telemetry edge.
-              </div>
-            </motion.div>
-
-            <div className="text-center">
-              <div className="text-[11px] font-mono uppercase tracking-[0.46em] text-chorus-primary/70">Core Carrier</div>
-              <div className="mt-2 text-6xl font-semibold tracking-tight text-white">{CORE_FREQUENCY_HZ.toFixed(2)} Hz</div>
-              <div className="mt-3 flex flex-wrap items-center justify-center gap-3 text-[11px] font-mono uppercase tracking-[0.18em] text-white/55">
-                <span>Nearest note: {CORE_REFERENCE_NOTE}</span>
-                <span>+{CORE_CENTS_SHARP} cents</span>
-                <span>Period: {CORE_PERIOD_MS.toFixed(2)} ms</span>
-              </div>
-              <div className="mt-4 text-sm text-white/65">
-                Carrier output is running at <span className="font-semibold text-white">{carrierHz.toFixed(2)} Hz</span> with
-                {" "}
-                <span className="font-semibold text-chorus-primary">{resParams.frequency.toFixed(2)}x</span> field drive.
-              </div>
+          {/* Center freq card */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
+            className="flex flex-col items-center text-center"
+          >
+            <div className="text-[10px] uppercase tracking-[0.46em] text-chorus-primary/60 mb-1">Core Carrier</div>
+            <div className="text-5xl font-semibold tracking-tight text-white tabular-nums">
+              {CORE_FREQUENCY_HZ.toFixed(2)}{" "}
+              <span className="text-2xl text-white/40">Hz</span>
             </div>
-          </div>
+            <div className="mt-2 flex items-center gap-4 text-[10px] uppercase tracking-[0.2em] text-white/40">
+              <span>{CORE_REFERENCE_NOTE}</span>
+              <span className="h-1 w-1 rounded-full bg-white/20" />
+              <span>+{CORE_CENTS_SHARP} ¢</span>
+              <span className="h-1 w-1 rounded-full bg-white/20" />
+              <span>{CORE_PERIOD_MS.toFixed(2)} ms</span>
+            </div>
+          </motion.div>
+
+          {/* Central freq map orb */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 + (resParams.frequency - 1) * 0.025 }}
+            transition={{ duration: 0.6 }}
+            className="relative aspect-square w-full max-w-[22rem] overflow-hidden rounded-[2rem] border border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.6)] bg-black/40"
+          >
+            {/* Spectrum fill */}
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  "radial-gradient(circle at center, rgba(255,44,32,0.95) 0%, rgba(255,106,44,0.9) 18%, rgba(255,226,94,0.82) 35%, rgba(118,228,179,0.72) 54%, rgba(76,201,240,0.68) 70%, rgba(56,107,255,0.78) 100%)",
+              }}
+            />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.14),transparent_50%)] mix-blend-screen" />
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:32px_32px]" />
+
+            {/* Pulsing ring */}
+            <motion.div
+              animate={{ scale: 1 + resParams.speed * 0.04, opacity: 0.25 + (resParams.frequency / 4.2) * 0.22 }}
+              transition={{ duration: 2, repeat: Infinity, repeatType: "mirror" }}
+              className="absolute inset-[16%] rounded-full border border-white/30 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.18),transparent_65%)]"
+            />
+            {/* Inner core */}
+            <motion.div
+              animate={{ scale: 0.94 + (resParams.frequency / 4.2) * 0.2 }}
+              transition={{ duration: 2.4, repeat: Infinity, repeatType: "mirror" }}
+              className="absolute inset-[30%] rounded-full bg-[radial-gradient(circle_at_center,rgba(255,40,30,0.98),rgba(255,110,44,0.6),transparent_72%)] blur-sm"
+            />
+
+            {/* Corner bracket decorations */}
+            <span className="absolute left-4 top-4 h-4 w-4 border-l-2 border-t-2 border-white/30" />
+            <span className="absolute right-4 top-4 h-4 w-4 border-r-2 border-t-2 border-white/30" />
+            <span className="absolute bottom-4 left-4 h-4 w-4 border-b-2 border-l-2 border-white/30" />
+            <span className="absolute bottom-4 right-4 h-4 w-4 border-b-2 border-r-2 border-white/30" />
+
+            <div className="absolute left-3 top-3 rounded-sm border border-white/15 bg-black/30 px-2 py-1 text-[9px] uppercase tracking-[0.22em] text-white/60 backdrop-blur-sm">
+              Core Frequency Map
+            </div>
+            <div className="absolute bottom-3 left-3 max-w-[11rem] text-[9px] uppercase tracking-[0.14em] text-white/50">
+              Radial decay · coherent core
+            </div>
+          </motion.div>
+
+          {/* Bottom carrier line */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="text-center text-[12px] text-white/50"
+          >
+            Carrier{" "}
+            <span className="text-white font-semibold">{carrierHz.toFixed(2)} Hz</span>
+            {"  ·  "}
+            <span className="text-chorus-primary font-semibold">{resParams.frequency.toFixed(2)}×</span>
+            {" field drive"}
+          </motion.div>
         </div>
 
-        <div className="flex w-[24rem] shrink-0 flex-col gap-4">
-          <GlassHUD title="Frequency Shells" delay={0.3} className="border-white/10">
+        {/* RIGHT PANEL */}
+        <aside className="flex flex-col gap-3 border-l border-white/[0.06] bg-black/30 backdrop-blur-sm p-4 overflow-auto">
+
+          {/* Frequency Shells */}
+          <PanelBlock title="Frequency Shells" accent="violet">
             <div className="space-y-3 pt-1">
               {HARMONIC_SHELLS.map((shell) => (
-                <div key={shell.role} className="flex items-start gap-3">
+                <div key={shell.role} className="flex items-start gap-2.5">
                   <div
-                    className="mt-1 h-2.5 w-2.5 rounded-full shadow-[0_0_12px_rgba(255,255,255,0.25)]"
-                    style={{ backgroundColor: shell.color }}
+                    className="mt-0.5 h-2 w-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: shell.color, boxShadow: `0 0 8px ${shell.color}88` }}
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-white/40">{shell.label}</div>
-                      <div className="text-[10px] font-mono text-chorus-primary">{shell.baseHz.toFixed(2)} Hz</div>
+                    <div className="flex items-center justify-between gap-2 mb-0.5">
+                      <div className="text-[9px] uppercase tracking-[0.18em] text-white/35">{shell.label}</div>
+                      <div className="text-[9px] tabular-nums" style={{ color: shell.color }}>{shell.baseHz.toFixed(2)} Hz</div>
                     </div>
-                    <div className="mt-1 text-xs text-white/65">{shell.description}</div>
+                    <div className="text-[10px] text-white/55 leading-relaxed">{shell.description}</div>
                   </div>
                 </div>
               ))}
             </div>
-          </GlassHUD>
+          </PanelBlock>
 
-          <div className="px-1 text-[10px] uppercase tracking-[0.2em] text-white/40">
-            <div className="mb-2 flex items-center justify-between">
-              <span>Nonagram Architecture</span>
-              <span className="animate-pulse font-mono text-[8px] text-chorus-primary">SEALED</span>
-            </div>
-
-            <motion.div
-              key={activePlate.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="relative overflow-hidden rounded-lg border border-chorus-primary/20 bg-white/5 p-4 backdrop-blur-md"
-            >
-              <div className="absolute right-0 top-0 p-2 opacity-20">
-                <Box className="h-8 w-8 text-chorus-primary" />
-              </div>
-              <div className="mb-1 text-[10px] font-mono text-chorus-primary">Plate {activePlate.id}</div>
-              <div className="mb-1 text-sm font-bold uppercase tracking-widest text-white">{activePlate.name}</div>
-              <div className="mb-3 text-[10px] text-white/50">{activePlate.role}</div>
-
-              <div className="flex items-center gap-2">
-                <div className="rounded border border-chorus-primary/20 bg-chorus-primary/10 px-1.5 py-0.5 text-[9px] font-mono text-chorus-primary">
-                  {activePlate.stateType}
+          {/* Nonagram Plate */}
+          <PanelBlock title="Nonagram Architecture" accent="cyan">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activePlate.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25 }}
+                className="relative overflow-hidden rounded border border-chorus-primary/15 bg-white/[0.04] p-3"
+              >
+                <div className="absolute right-2 top-2 opacity-15">
+                  <Box className="h-7 w-7 text-chorus-primary" />
                 </div>
-                <div className="h-px flex-1 bg-white/10" />
-                <div className="text-[9px] font-mono text-white/30">
-                  -&gt; {DEFAULT_TRANSITIONS[activePlate.id as PlateId] === INFINITY_CORE ? "INF" : DEFAULT_TRANSITIONS[activePlate.id as PlateId]}
+                <div className="mb-0.5 text-[9px] text-chorus-primary">Plate {activePlate.id}</div>
+                <div className="mb-0.5 text-[11px] font-bold uppercase tracking-widest text-white">{activePlate.name}</div>
+                <div className="mb-2.5 text-[9px] text-white/40">{activePlate.role}</div>
+                <div className="flex items-center gap-2">
+                  <div className="rounded border border-chorus-primary/20 bg-chorus-primary/10 px-1.5 py-0.5 text-[9px] text-chorus-primary">
+                    {activePlate.stateType}
+                  </div>
+                  <div className="h-px flex-1 bg-white/10" />
+                  <div className="text-[9px] text-white/30">
+                    {"->"} {DEFAULT_TRANSITIONS[activePlate.id as PlateId] === INFINITY_CORE ? "INF" : DEFAULT_TRANSITIONS[activePlate.id as PlateId]}
+                  </div>
                 </div>
-              </div>
-            </motion.div>
+              </motion.div>
+            </AnimatePresence>
 
-            <div className="mt-3 grid grid-cols-3 gap-2">
+            {/* Plate progress dots */}
+            <div className="mt-3 grid grid-cols-3 gap-1.5">
               {DEFAULT_PLATES.map((plate, index) => (
                 <div
                   key={plate.id}
                   className={cn(
-                    "h-1.5 rounded-full transition-all duration-500",
-                    index === currentPlateIdx ? "bg-chorus-primary shadow-[0_0_8px_rgba(0,245,212,0.6)]" : "bg-white/10"
+                    "h-1 rounded-full transition-all duration-500",
+                    index === currentPlateIdx
+                      ? "bg-chorus-primary shadow-[0_0_6px_rgba(0,245,212,0.6)]"
+                      : "bg-white/10"
                   )}
                 />
               ))}
             </div>
-          </div>
+          </PanelBlock>
 
-          <GlassHUD title="Core Invariants" delay={0.38} className="flex-1 border-white/10">
-            <div className="space-y-4 pt-2">
+          {/* Core Invariants */}
+          <PanelBlock title="Core Invariants" accent="emerald" className="flex-1">
+            <div className="space-y-3 pt-1">
               {[
-                { label: "PlateDomain", status: "VALID", icon: Shield },
-                { label: "SealImmutable", status: "LOCKED", icon: Activity },
-                { label: "InfinityReturn", status: "READY", icon: Zap },
+                { label: "PlateDomain", status: "VALID", icon: Shield, color: "#00f5d4" },
+                { label: "SealImmutable", status: "LOCKED", icon: Activity, color: "#fbbf24" },
+                { label: "InfinityReturn", status: "READY", icon: Zap, color: "#a78bfa" },
               ].map((invariant) => (
-                <div key={invariant.label} className="flex items-center gap-3">
-                  <div className="rounded border border-white/10 bg-white/5 p-1.5">
-                    <invariant.icon className="h-3 w-3 text-chorus-primary/75" />
+                <div key={invariant.label} className="flex items-center gap-2.5">
+                  <div
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-white/10 bg-white/[0.06]"
+                    style={{ boxShadow: `inset 0 0 6px ${invariant.color}22` }}
+                  >
+                    <invariant.icon className="h-3 w-3" style={{ color: invariant.color }} />
                   </div>
                   <div className="flex-1">
-                    <div className="text-[10px] font-mono uppercase text-white/40">{invariant.label}</div>
-                    <div className="text-[10px] font-bold tracking-widest text-chorus-primary/85">{invariant.status}</div>
+                    <div className="text-[9px] uppercase text-white/35">{invariant.label}</div>
+                    <div className="text-[10px] font-bold tracking-widest" style={{ color: invariant.color }}>{invariant.status}</div>
                   </div>
                 </div>
               ))}
             </div>
-          </GlassHUD>
-        </div>
+          </PanelBlock>
+        </aside>
       </section>
 
-      <div className="relative z-20 flex justify-center px-4 pb-12">
+      {/* ── COMMAND BAR ── */}
+      <div className="relative z-20 flex justify-center border-t border-white/[0.06] bg-black/60 backdrop-blur-xl px-4 py-2">
         <CommandInput onCommand={handleManualCommand} onCapture={captureScreen} />
       </div>
 
-      <div className="relative z-10 flex justify-between border-t border-white/5 bg-black/40 px-8 py-3 font-mono text-[9px] uppercase tracking-[0.4em] text-white/40 backdrop-blur-xl">
-        <div className="flex gap-10">
-          <span className="flex items-center gap-2">
-            <span className="h-1 w-1 rounded-full bg-chorus-primary" />
-            Authority: Architect
+      {/* ── STATUS FOOTER ── */}
+      <footer className="relative z-20 flex items-center justify-between border-t border-white/[0.05] bg-black/70 px-8 py-2 font-mono text-[9px] uppercase tracking-[0.36em] text-white/30 backdrop-blur-xl">
+        <div className="flex items-center gap-8">
+          <StatusPill color="#00f5d4">Authority: Architect</StatusPill>
+          <span className="hidden sm:inline">
+            Last sync: {lastLinkTimestamp ? new Date(lastLinkTimestamp).toLocaleTimeString() : "none"}
           </span>
-          <span className="hidden sm:inline">Last Sync: {lastLinkTimestamp ? new Date(lastLinkTimestamp).toLocaleTimeString() : "none"}</span>
         </div>
-        <div className="flex gap-8">
-          <span className="glow-text italic text-chorus-primary">Field: Stable</span>
+        <div className="flex items-center gap-8">
+          <span className="tabular-nums text-white/25">{nowStr}</span>
+          <StatusPill color="#00f5d4" glow>Field: Stable</StatusPill>
           <span className="hidden sm:inline">Nodes: {latticeNodeCount}</span>
         </div>
-      </div>
+      </footer>
     </main>
+  );
+}
+
+// ── Sub-components ──
+
+function NavStat({ label, value, accent }: { label: string; value: string; accent: string }) {
+  return (
+    <div className="text-center">
+      <div className="text-[8px] uppercase tracking-[0.34em] text-white/30">{label}</div>
+      <div className={cn("text-[12px] tabular-nums font-semibold mt-0.5", accent)}>{value}</div>
+    </div>
+  );
+}
+
+function NavButton({
+  onClick,
+  ariaLabel,
+  ariaPressed,
+  children,
+}: {
+  onClick: () => void;
+  ariaLabel: string;
+  ariaPressed?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={ariaPressed}
+      aria-label={ariaLabel}
+      className="flex min-h-8 items-center gap-1.5 rounded border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-white/60 transition-all hover:border-chorus-primary/40 hover:bg-chorus-primary/8 hover:text-chorus-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-chorus-primary/50"
+    >
+      {children}
+    </button>
+  );
+}
+
+function PanelBlock({
+  title,
+  accent,
+  children,
+  className,
+}: {
+  title: string;
+  accent: "cyan" | "amber" | "violet" | "emerald";
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const accentClass = {
+    cyan: "text-chorus-primary",
+    amber: "text-amber-400",
+    violet: "text-violet-400",
+    emerald: "text-emerald-400",
+  }[accent];
+
+  const dotClass = {
+    cyan: "bg-chorus-primary shadow-[0_0_6px_rgba(0,245,212,0.7)]",
+    amber: "bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.7)]",
+    violet: "bg-violet-400 shadow-[0_0_6px_rgba(167,139,250,0.7)]",
+    emerald: "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)]",
+  }[accent];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35 }}
+      className={cn(
+        "flex flex-col rounded border border-white/[0.07] bg-white/[0.03] p-3 backdrop-blur-sm",
+        className
+      )}
+    >
+      <div className="flex items-center justify-between mb-3 pb-2 border-b border-white/[0.07]">
+        <h3 className={cn("text-[9px] font-bold uppercase tracking-[0.28em]", accentClass)}>{title}</h3>
+        <span className={cn("h-1.5 w-1.5 rounded-full animate-pulse", dotClass)} />
+      </div>
+      <div className="flex-1 min-h-0 overflow-auto">{children}</div>
+    </motion.div>
+  );
+}
+
+function StatusPill({ color, glow = false, children }: { color: string; glow?: boolean; children: React.ReactNode }) {
+  return (
+    <span
+      className="flex items-center gap-1.5"
+      style={glow ? { color, textShadow: `0 0 8px ${color}88` } : { color }}
+    >
+      <span
+        className="h-1 w-1 rounded-full"
+        style={{ backgroundColor: color, boxShadow: glow ? `0 0 6px ${color}` : undefined }}
+      />
+      {children}
+    </span>
   );
 }
