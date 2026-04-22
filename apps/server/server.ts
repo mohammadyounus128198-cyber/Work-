@@ -425,11 +425,24 @@ async function startServer() {
   });
 
   app.post("/api/codex/annotations", express.json(), (req, res) => {
+    // Authorization guard: if the caller supplies an operatorId it must match
+    // the active operator — prevents user impersonation via body spreading.
+    const { operatorId, author: _discardedAuthor, ...safeBody } = req.body ?? {};
+
+    if (operatorId !== undefined && operatorId !== operatorState.operatorId) {
+      return res.status(401).json({
+        error: "Unauthorized",
+        detail: "Supplied operatorId does not match the active operator session."
+      });
+    }
+
     const annotation: TraceAnnotation = {
       id: `ann-${Date.now()}`,
       createdAt: new Date().toISOString(),
-      author: "MOHAMMAD",
-      ...req.body
+      // author is always set server-side from the canonical operatorId,
+      // never from untrusted request body input.
+      author: operatorState.operatorId,
+      ...safeBody
     };
     operatorState.annotations.unshift(annotation);
     res.status(201).json(annotation);
