@@ -7,7 +7,18 @@ import { step } from "./step.js";
 export type SimulationResult = {
   type: "ATTRACTOR" | "TRANSIENT";
   state: RuntimeState;
+  steps: number;
+  stability: number;
 };
+
+function calculateStability(state: RuntimeState): number {
+  if (state.history.length < 2) {
+    return 0;
+  }
+
+  const uniqueCount = new Set(state.history).size;
+  return Number((1 - uniqueCount / state.history.length).toFixed(4));
+}
 
 export function simulate(
   start: string,
@@ -40,9 +51,19 @@ export function simulate(
     state = nextState;
 
     if (detectAttractor(state)) {
-      return { type: "ATTRACTOR", state };
+      return {
+        type: "ATTRACTOR",
+        state,
+        steps: state.steps,
+        stability: calculateStability(state)
+      };
     }
   }
 
-  return { type: "TRANSIENT", state };
+  return {
+    type: "TRANSIENT",
+    state,
+    steps: state.steps,
+    stability: calculateStability(state)
+  };
 }
