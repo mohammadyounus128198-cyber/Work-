@@ -1,6 +1,9 @@
 import { sha256JsonStable } from "../lib/hash";
 import type { Decision } from "./testMatrix";
 
+export const SYSTEM_VERSION = "1.0.0" as const;
+export const EXPECTED_FRONTIER_CARDINALITY = 36 as const;
+
 export type Metrics = {
   safety: number;
   cost: number;
@@ -29,11 +32,13 @@ export type CanonicalState = {
 };
 
 export type UnifiedState = {
+  version: typeof SYSTEM_VERSION;
   canonical: CanonicalState;
   visual: VisualState;
   hashes: {
     canonical: string;
     visual: string;
+    binding: string;
   };
 };
 
@@ -49,6 +54,16 @@ function compareCandidates(a: FrontierCandidate, b: FrontierCandidate): number {
     a.decision.localeCompare(b.decision) ||
     a.id.localeCompare(b.id)
   );
+}
+
+function deepFreeze<T>(value: T): T {
+  if (value && typeof value === "object") {
+    Object.freeze(value);
+    for (const nested of Object.values(value as Record<string, unknown>)) {
+      deepFreeze(nested);
+    }
+  }
+  return value;
 }
 
 export function mapToVisual(frontier: FrontierCandidate[], selected: FrontierCandidate): VisualState {
@@ -71,12 +86,26 @@ function validateEyeIntensityRange(eyeIntensity: number): void {
   }
 }
 
+function assertUtility(frontier: FrontierCandidate[]): void {
+  if (frontier.every((candidate) => candidate.decision === "reject")) {
+    throw new Error("Degenerate system: no actionable paths");
+  }
+}
+
+function computeBindingHash(canonicalHash: string, visualHash: string): string {
+  return sha256JsonStable({ canonical: canonicalHash, visual: visualHash });
+}
+
 export function buildUnifiedState(
   frontierInput: FrontierCandidate[],
   selectedId?: string,
 ): UnifiedState {
   if (frontierInput.length === 0) {
     throw new Error("Dead state: no valid decisions");
+  }
+
+  if (frontierInput.length !== EXPECTED_FRONTIER_CARDINALITY) {
+    throw new Error(`state drift: expected frontier cardinality ${EXPECTED_FRONTIER_CARDINALITY}`);
   }
 
   const frontier = frontierInput
@@ -89,6 +118,8 @@ export function buildUnifiedState(
       },
     }))
     .sort(compareCandidates);
+
+  assertUtility(frontier);
 
   const selected = selectedId
     ? frontier.find((candidate) => candidate.id === selectedId)
@@ -115,19 +146,32 @@ export function buildUnifiedState(
     policy: "safety-first-v1",
   };
 
-  const hashes = {
-    canonical: sha256JsonStable(canonical),
-    visual: sha256JsonStable(visual),
-  };
+  const canonicalHash = sha256JsonStable(canonical);
+  const visualHash = sha256JsonStable(visual);
+  const bindingHash = computeBindingHash(canonicalHash, visualHash);
 
-  return {
+  return deepFreeze({
+    version: SYSTEM_VERSION,
     canonical,
     visual,
-    hashes,
-  };
+    hashes: {
+      canonical: canonicalHash,
+      visual: visualHash,
+      binding: bindingHash,
+    },
+  });
 }
 
-export function renderVerified(unified: UnifiedState): VisualState {
+export function verifyUnifiedState(unified: UnifiedState): VisualState {
+  if (unified.version !== SYSTEM_VERSION) {
+    throw new Error("version mismatch");
+  }
+
+  const recomputedCanonicalHash = sha256JsonStable(unified.canonical);
+  if (recomputedCanonicalHash !== unified.hashes.canonical) {
+    throw new Error("Render aborted: canonical integrity failure");
+  }
+
   const recomputedVisual = mapToVisual(
     unified.canonical.frontier,
     unified.canonical.selected,
@@ -138,6 +182,14 @@ export function renderVerified(unified: UnifiedState): VisualState {
     throw new Error("Render aborted: visual integrity failure");
   }
 
+  const recomputedBindingHash = computeBindingHash(
+    recomputedCanonicalHash,
+    recomputedVisualHash,
+  );
+  if (recomputedBindingHash !== unified.hashes.binding) {
+    throw new Error("Render aborted: cross-binding integrity failure");
+  }
+
   if (recomputedVisual.eyeIntensity !== unified.canonical.selected.metrics.safety) {
     throw new Error("Render aborted: semantic mismatch");
   }
@@ -145,4 +197,13 @@ export function renderVerified(unified: UnifiedState): VisualState {
   validateEyeIntensityRange(recomputedVisual.eyeIntensity);
 
   return recomputedVisual;
+}
+
+export function safeRender(
+  unified: UnifiedState,
+  draw: (visual: VisualState) => void,
+): VisualState {
+  const verifiedVisual = verifyUnifiedState(unified);
+  draw(verifiedVisual);
+  return verifiedVisual;
 }
