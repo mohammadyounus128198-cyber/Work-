@@ -1,7 +1,12 @@
 import { AUTHS, DECISIONS, ENVS, MODES, RISKS, type Vector } from "./testMatrix";
 import { isValidVector } from "./constraints";
 
-export function generateAllVectors(): Vector[] {
+/**
+           * Generate all valid vectors from every combination of environment, mode, risk, decision, and auth.
+           *
+           * @returns An array of Vector objects for each combination of `env`, `mode`, `risk`, `decision`, and `auth` that passes `isValidVector`
+           */
+          export function generateAllVectors(): Vector[] {
   const out: Vector[] = [];
 import { isValidVector } from "./constraints";
 import {
