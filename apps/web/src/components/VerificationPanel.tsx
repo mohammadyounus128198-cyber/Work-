@@ -1,5 +1,17 @@
 import { useState } from "react";
 
+/**
+ * Displays verification status and an optional expandable block with proof details.
+ *
+ * Shows a status label ("VERIFIED" in green or "INVALID" in red) and a toggle button.
+ * When expanded and a `proof` object is provided, renders the proof's `hash`, the
+ * `signature` truncated to the first 32 characters followed by `...`, and the `algorithm`
+ * using monospace styling.
+ *
+ * @param proof - Object containing proof fields (`hash`, `signature`, `algorithm`)
+ * @param verified - Truthy value indicates the proof is verified; falsy indicates invalid
+ * @returns The verification panel UI as a React element
+ */
 export default function VerificationPanel({ proof, verified }: any) {
   const [expanded, setExpanded] = useState(false);
 

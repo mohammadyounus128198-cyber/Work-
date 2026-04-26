@@ -7,6 +7,14 @@ export type WorldDrift = {
   artifactHash: string;
 };
 
+/**
+ * Compute drift metrics between a UI payload and an artifact payload.
+ *
+ * @returns A `WorldDrift` containing:
+ * - `uiHash` and `artifactHash`: SHA-256 hex digests of the provided payloads.
+ * - `percent`: the drift percentage (0 when hashes match; otherwise the ratio of differing characters to the longer payload length, rounded to two decimal places).
+ * - `status`: `"SYNC"` when the hashes are identical, `"DRIFT"` otherwise.
+ */
 export function calculateWorldDrift(uiPayload: string, artifactPayload: string): WorldDrift {
   const uiHash = sha256Hex(uiPayload);
   const artifactHash = sha256Hex(artifactPayload);

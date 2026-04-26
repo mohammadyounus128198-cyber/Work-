@@ -2,6 +2,20 @@ import type { AllocatorResponse, Vector } from "./testMatrix";
 
 export type MetricsHook = (event: string, meta: Record<string, unknown>) => void;
 
+/**
+ * Validate allocator-related invariants for the given vector and allocator response, failing on any violation.
+ *
+ * Performs the following checks and fails if any condition is met:
+ * - Missing `Content-Type` header on the allocator response.
+ * - High-risk vectors that were auto-approved.
+ * - Vectors with decision `defer` that made API calls.
+ * - Streaming mode vectors whose reported latency is >= 200 ms.
+ *
+ * @param v - The vector being validated
+ * @param res - The allocator response to validate against the vector
+ * @param metricsHook - Optional hook invoked on failure as `("allocator.invariant.violation", { reason, vector: v })`
+ * @throws Error when any invariant is violated; the thrown error message contains the failure reason
+ */
 export function assertInvariants(
   v: Vector,
   res: AllocatorResponse,

@@ -2,6 +2,10 @@
 const DB_NAME = "omega_identity";
 const STORE = "keys";
 
+/**
+ * Open the `omega_identity` IndexedDB database and ensure the `keys` object store exists.
+ * @returns {Promise<IDBDatabase>} The opened database instance.
+ */
 function openDB(){
   return new Promise((res,rej)=>{
     const req = indexedDB.open(DB_NAME,1);
@@ -13,6 +17,13 @@ function openDB(){
   });
 }
 
+/**
+ * Persist an Ed25519 key pair into the module's IndexedDB record `"identity"`.
+ *
+ * Stores the public key as SPKI and private key as PKCS8, both Base64-encoded, in the `keys` object store under the fixed key `"identity"`.
+ *
+ * @param {{ publicKey: CryptoKey, privateKey: CryptoKey }} keyPair - The Ed25519 key pair to persist; `publicKey` will be exported as SPKI and `privateKey` as PKCS8.
+ */
 async function saveKeyPair(keyPair){
   const db = await openDB();
   const tx = db.transaction(STORE,"readwrite");
@@ -25,6 +36,14 @@ async function saveKeyPair(keyPair){
   },"identity");
 }
 
+/**
+ * Load the persisted Ed25519 key pair from IndexedDB, or return null if none is stored.
+ *
+ * Retrieves the record keyed as "identity" from the module's object store and reconstructs
+ * the public and private CryptoKey objects using Web Crypto imports when present.
+ *
+ * @returns {{ publicKey: CryptoKey, privateKey: CryptoKey } | null} An object containing the Ed25519 `publicKey` and `privateKey` CryptoKey instances, or `null` if no stored identity is found.
+ */
 async function loadKeyPair(){
   const db = await openDB();
   const tx = db.transaction(STORE,"readonly");
@@ -42,6 +61,11 @@ async function loadKeyPair(){
   });
 }
 
+/**
+ * Ensure an Ed25519 key pair exists in IndexedDB and return it.
+ * If a persisted key pair is found it is returned; otherwise a new key pair is generated, persisted, and returned.
+ * @returns {Promise<{publicKey: CryptoKey, privateKey: CryptoKey}>} The Ed25519 key pair object containing `publicKey` and `privateKey` CryptoKey instances.
+ */
 async function getOrCreateIdentity(){
   let kp = await loadKeyPair();
   if(kp) return kp;

@@ -16,7 +16,12 @@ app.use((req, res, next) => {
   next();
 });
 
-// Deterministic canonicalizer
+/**
+ * Produces a deterministic JSON string of an object by serializing with its top-level keys sorted alphabetically.
+ *
+ * @param obj - The value to serialize; should be JSON-serializable. Only the object's own top-level keys are ordered.
+ * @returns The JSON string representation of `obj` with top-level keys in sorted order.
+ */
 function canonicalize(obj: any): string {
   return JSON.stringify(obj, Object.keys(obj).sort());
 }
