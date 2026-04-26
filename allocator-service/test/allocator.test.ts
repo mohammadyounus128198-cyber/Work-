@@ -31,6 +31,9 @@ describe("allocator matrix", () => {
     expect(vectors.every(isValidVector)).toBe(true);
     expect(vectors).toContainEqual(V18);
     expect(vectors).toContainEqual(V42);
+    expect(
+      vectors.some((vector) => vector.mode === "streaming" && vector.auth === "bypass"),
+    ).toBe(false);
   });
 
   it("enforces invariants for every generated vector", () => {
