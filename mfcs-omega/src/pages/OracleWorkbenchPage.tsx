@@ -20,6 +20,10 @@ function Icon({ name }: { name: string }) {
 }
 
 export default function OracleWorkbenchPage({ evaluation }: Props) {
+  if (evaluation.inPhiAttractor && !evaluation.attractorId) {
+    throw new Error('Invariant breach: attractorId missing');
+  }
+
   return (
     <section>
       {evaluation.inPhiAttractor && (
