@@ -46,6 +46,12 @@ export interface EnvelopeReport {
 
 const PHI_FACETS = ['Facet-A', 'Facet-C'];
 
+
+function computeNearRecursion(_state: OracleState): boolean {
+  // TODO(phi-A): Replace this placeholder with Distance(f^n(x), x) <= ε evaluation.
+  return false;
+}
+
 export class OracleKernelCore {
   constructor(
     private readonly dimension: 2 | 3,
@@ -59,7 +65,7 @@ export class OracleKernelCore {
 
     const lawCompliance = {
       lawId: 'phi-A' as const,
-      nearRecursion: false,
+      nearRecursion: computeNearRecursion(state),
       irreversible: state.mode === 'BUILD_COMPRESS' || state.mode === 'FUSION',
       inAttractor: inPhiAttractor,
     };
